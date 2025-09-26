@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -134,7 +135,7 @@ export default function Home() {
           </form>
 
           <div className="mt-6 flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="/quote" className="rounded-xl px-6 py-3 font-semibold bg-teal-500 text-white hover:bg-teal-600">
+            <Link href="/quote" className="rounded-xl px-6 py-3 font-semibold bg-teal-500 text-white hover:bg-teal-600">
               Get My Instant Estimate
             </a>
             <a href="https://wa.me/447000000000" className="rounded-xl px-6 py-3 font-semibold border border-teal-500 text-teal-500 hover:bg-teal-50">
@@ -268,7 +269,7 @@ export default function Home() {
             </div>
           </div>
           <div className="mt-6">
-            <a href="/quote" className="inline-block rounded-xl bg-teal-500 text-white px-5 py-3 font-semibold hover:bg-teal-600">
+            <Link href="/quote" className="inline-block rounded-xl bg-teal-500 text-white px-5 py-3 font-semibold hover:bg-teal-600">
               Try it now → Get My Estimate
             </a>
           </div>
@@ -315,7 +316,7 @@ export default function Home() {
             Kent’s only AI-powered builder. Every job, big or small — get your instant estimate now.
           </p>
           <div className="mt-6 flex gap-4 justify-center">
-            <a href="/quote" className="rounded-xl px-6 py-3 font-semibold bg-teal-500 text-white hover:bg-teal-600">
+            <Link href="/quote" className="rounded-xl px-6 py-3 font-semibold bg-teal-500 text-white hover:bg-teal-600">
               Get My Instant Estimate
             </a>
             <a href="https://wa.me/447000000000" className="rounded-xl px-6 py-3 font-semibold border border-teal-500 text-teal-500 hover:bg-teal-50">
