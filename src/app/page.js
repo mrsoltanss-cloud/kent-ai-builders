@@ -5,9 +5,8 @@ import { useRouter } from "next/navigation";
 
 export default function Home() {
   const router = useRouter();
-  const accent = "text-teal-500";
 
-  // ----- Rotating search suggestions -----
+  // Rotating search suggestions
   const suggestions = [
     "Leaky roof",
     "Wall needs repointing",
@@ -20,11 +19,14 @@ export default function Home() {
   ];
   const [sIndex, setSIndex] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setSIndex((i) => (i + 1) % suggestions.length), 2200);
+    const id = setInterval(
+      () => setSIndex((i) => (i + 1) % suggestions.length),
+      2200
+    );
     return () => clearInterval(id);
-  }, []);
+  }, [suggestions.length]); // <-- important for ESLint
 
-  // Search bar → /quote with query
+  // Search bar → /quote
   const [query, setQuery] = useState("");
   function onSearchSubmit(e) {
     e.preventDefault();
@@ -32,7 +34,7 @@ export default function Home() {
     router.push(`/quote?query=${encodeURIComponent(q)}`);
   }
 
-  // ----- Services directory (bigger set) -----
+  // Services directory
   const services = [
     { key: "extensions", label: "Extensions & Renovations" },
     { key: "new-builds", label: "New Builds (1–100 homes)" },
@@ -53,26 +55,25 @@ export default function Home() {
     { key: "guttering", label: "Gutters, Soffits & Fascias" },
   ];
 
-  // ----- Mini Instant Estimate (teaser) -----
+  // Mini Instant Estimate (teaser)
   const [svc, setSvc] = useState("repointing");
-  const [len, setLen] = useState("");     // metres
-  const [ht, setHt] = useState("");       // metres
-  const [valley, setValley] = useState(""); // metres
-
+  const [len, setLen] = useState("");
+  const [ht, setHt] = useState("");
+  const [valley, setValley] = useState("");
   const [low, high] = useMemo(() => {
     const n = (v) => Number(String(v).replace(",", ".")) || 0;
     let base = 0;
     if (svc === "repointing") base = n(len) * n(ht) * 58;
-    if (svc === "sealing")    base = n(len) * n(ht) * 12;
+    if (svc === "sealing") base = n(len) * n(ht) * 12;
     if (svc === "roof-valley") base = n(valley) * 200;
     return [base * 0.9, base * 1.2];
   }, [svc, len, ht, valley]);
-
   const gbp = (x) =>
-    new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(
-      Math.max(0, Math.round(x))
-    );
-
+    new Intl.NumberFormat("en-GB", {
+      style: "currency",
+      currency: "GBP",
+      maximumFractionDigits: 0,
+    }).format(Math.max(0, Math.round(x)));
   function toQuote() {
     const p = new URLSearchParams();
     p.set("service", svc);
@@ -82,7 +83,6 @@ export default function Home() {
     router.push(`/quote?${p.toString()}`);
   }
 
-  // ----- Guides preview -----
   const guides = [
     "How much does repointing cost in Kent?",
     "Roof repair costs explained",
@@ -128,20 +128,16 @@ export default function Home() {
                 Get Estimate
               </button>
             </div>
-            <p className="mt-2 text-xs text-gray-500">Try: “{suggestions[(sIndex + 1) % suggestions.length]}”</p>
+            <p className="mt-2 text-xs text-gray-500">
+              Try: “{suggestions[(sIndex + 1) % suggestions.length]}”
+            </p>
           </form>
 
           <div className="mt-6 flex flex-col sm:flex-row gap-4 justify-center">
-            <a
-              href="/quote"
-              className="rounded-xl px-6 py-3 font-semibold bg-teal-500 text-white hover:bg-teal-600"
-            >
+            <a href="/quote" className="rounded-xl px-6 py-3 font-semibold bg-teal-500 text-white hover:bg-teal-600">
               Get My Instant Estimate
             </a>
-            <a
-              href="https://wa.me/447000000000"
-              className="rounded-xl px-6 py-3 font-semibold border border-teal-500 text-teal-500 hover:bg-teal-50"
-            >
+            <a href="https://wa.me/447000000000" className="rounded-xl px-6 py-3 font-semibold border border-teal-500 text-teal-500 hover:bg-teal-50">
               Talk on WhatsApp
             </a>
           </div>
@@ -189,7 +185,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* MINI INSTANT ESTIMATE (teaser) */}
+      {/* MINI INSTANT ESTIMATE */}
       <section className="mx-auto max-w-5xl px-6 pb-6">
         <div className="rounded-3xl border p-6 md:p-8 bg-gray-50">
           <h3 className="text-xl font-semibold">Quick estimate preview</h3>
@@ -226,7 +222,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SERVICES GRID (expanded) */}
+      {/* SERVICES GRID */}
       <section className="mx-auto max-w-6xl px-6 py-12">
         <h2 className="text-2xl md:text-3xl font-bold text-center text-teal-500">One-stop building services</h2>
         <p className="text-center text-gray-600 mt-2">From tiny fixes to large developments — we handle it all.</p>
@@ -297,7 +293,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* GUIDES PREVIEW */}
+      {/* GUIDES */}
       <section className="mx-auto max-w-6xl px-6 pb-14">
         <h2 className="text-2xl md:text-3xl font-bold text-center text-teal-500">Cost guides & advice</h2>
         <p className="text-center text-gray-600 mt-2">Helping you understand building costs before you commit.</p>
@@ -331,3 +327,4 @@ export default function Home() {
     </main>
   );
 }
+
