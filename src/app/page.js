@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function Home() {
   const router = useRouter();
 
-  // Rotating search suggestions
+  // ----------------- Rotating search suggestions -----------------
   const suggestions = [
     "Leaky roof",
     "Wall needs repointing",
@@ -30,7 +31,7 @@ export default function Home() {
     router.push(`/quote?query=${encodeURIComponent(q)}`);
   }
 
-  // Services carousel data
+  // ----------------- Services carousel data -----------------
   const services = [
     { name: "Plumber", icon: "🚰" },
     { name: "Electrician", icon: "⚡" },
@@ -106,6 +107,67 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-white text-gray-900">
+      {/* TOP HEADER with TradeSure brand + fixed heart icon */}
+      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="h-14 flex items-center justify-between gap-3">
+            {/* Brand: icon + wordmark */}
+            <Link href="/" className="flex items-center gap-2 font-extrabold tracking-tight text-[#0b0c4e]" aria-label="TradeSure Home">
+              <Image src="/brand/ts-shield.svg" alt="TradeSure" width={28} height={28} priority />
+              <span>TradeSure</span>
+            </Link>
+
+            {/* Center nav (desktop) */}
+            <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+              <Link href="/" className="text-gray-700 hover:text-teal-600">Homeowner</Link>
+              <Link href="/trades/login" className="text-gray-700 hover:text-teal-600">Trades</Link>
+            </nav>
+
+            {/* Right actions */}
+            <div className="flex items-center gap-2">
+              <Link
+                href="/trades/signup"
+                className="hidden sm:inline-flex rounded-full border border-teal-600 text-teal-700 px-3 py-1.5 text-sm font-semibold hover:bg-teal-50"
+              >
+                Trade sign up
+              </Link>
+              <Link
+                href="/login"
+                className="hidden sm:inline-flex rounded-full bg-teal-600 text-white px-3 py-1.5 text-sm font-semibold hover:bg-teal-700"
+              >
+                Log in
+              </Link>
+
+              {/* Fixed heart icon (stroke uses currentColor for visibility) */}
+              <Link
+                href="/favourites"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full hover:bg-gray-100 text-gray-700"
+                aria-label="Favourites"
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path
+                    d="M12 20.5s-6.8-3.95-8.7-7.7C2 9.5 4 7.2 6.3 7.2c1.4 0 2.77.85 3.37 2.03.16.31.5.51.86.51s.7-.2.86-.51A3.8 3.8 0 0 1 12 7c2.3 0 4.3 2.5 5.7 5.8-1.9 3.75-8.7 7.7-8.7 7.7Z"
+                    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                  />
+                </svg>
+              </Link>
+
+              {/* Profile icon */}
+              <Link href="/profile" className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-200 text-gray-700 font-bold" aria-label="My profile">
+                <span className="text-xs">ME</span>
+              </Link>
+            </div>
+          </div>
+
+          {/* Mobile links row */}
+          <div className="md:hidden flex items-center justify-center gap-4 pb-3 text-sm">
+            <Link href="/" className="text-gray-700 hover:text-teal-600">Homeowner</Link>
+            <span className="text-gray-300">•</span>
+            <Link href="/trades/login" className="text-gray-700 hover:text-teal-600">Trades</Link>
+          </div>
+        </div>
+      </header>
+
       {/* HERO */}
       <section className="relative bg-gray-900 text-white">
         <img
@@ -191,13 +253,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SERVICES — snap scroll on mobile, paged on desktop */}
+      {/* SERVICES — swipe on mobile, paged on desktop */}
       <section className="bg-gray-50 border-y">
         <div className="mx-auto max-w-6xl px-6 py-12 sm:py-16">
           <h2 className="text-2xl sm:text-3xl font-bold text-center text-[#0b0c4e]">Browse our most popular categories</h2>
 
           <div className="relative mt-8 sm:mt-10">
-            {/* Desktop arrows */}
             <button
               aria-label="Previous"
               onClick={prevPage}
@@ -209,7 +270,6 @@ export default function Home() {
               className="hidden sm:flex absolute -right-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 items-center justify-center rounded-xl border bg-white shadow hover:border-teal-500"
             >›</button>
 
-            {/* Mobile: natural swipe + snap; Desktop: paged transform */}
             <div className="overflow-x-auto sm:overflow-hidden [-webkit-overflow-scrolling:touch]">
               <div
                 className="flex sm:transition-transform sm:duration-500 sm:ease-out snap-x snap-mandatory sm:snap-none"
@@ -229,7 +289,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Dots */}
             <div className="mt-6 flex items-center justify-center gap-2">
               {Array.from({ length: totalPages }).map((_, i) => (
                 <button
@@ -244,7 +303,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* WHY TRUST US (photo collage + badges) */}
+      {/* WHY TRUST US */}
       <section className="bg-gray-900 text-white py-12 sm:py-16">
         <div className="mx-auto max-w-6xl px-6 grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-12 items-center">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -306,7 +365,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* TESTIMONIALS — swipe + auto */}
+      {/* TESTIMONIALS */}
       <section className="mx-auto max-w-6xl px-6 py-12 sm:py-16">
         <h2 className="text-2xl sm:text-3xl font-bold text-center text-teal-600">What our customers say</h2>
         <div className="relative mt-8 sm:mt-10">
@@ -360,7 +419,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ACTION CARDS (teal buttons) */}
+      {/* ACTION CARDS */}
       <section className="bg-white">
         <div className="mx-auto max-w-6xl px-6 py-12 sm:py-16">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
@@ -400,7 +459,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* FINAL CTA (teal) */}
+      {/* FINAL CTA */}
       <section className="bg-teal-600 text-white text-center py-12 sm:py-16">
         <h2 className="text-2xl sm:text-3xl font-bold">Ready to build smarter?</h2>
         <p className="mt-4 text-lg">Kent’s only AI-powered builder. Get your instant estimate today.</p>
@@ -433,7 +492,7 @@ export default function Home() {
           <div>
             <h3 className="font-semibold text-white">Contact</h3>
             <p>📞 07000 000000</p>
-            <p>✉️ info@kent-ai-builders.co.uk</p>
+            <p>✉️ info@tradesure.uk</p>
           </div>
           <div>
             <h3 className="font-semibold text-white">Service Areas</h3>
@@ -442,7 +501,7 @@ export default function Home() {
           <div>
             <h3 className="font-semibold text-white">Trust</h3>
             <p>🛡️ Fully insured & guaranteed</p>
-            <p>© Kent AI Builders 2025</p>
+            <p>© TradeSure 2025</p>
           </div>
         </div>
       </footer>
