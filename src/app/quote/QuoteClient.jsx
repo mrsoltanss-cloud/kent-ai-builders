@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
@@ -157,7 +158,7 @@ export default function QuoteClient() {
             </p>
             <p className="mt-2 text-sm text-gray-600">Based on your inputs ({service.replace("-", " ")}). Final price confirmed after a free site survey.</p>
             <div className="mt-4 flex gap-3">
-              <a href="/" className="rounded-lg border px-4 py-2 font-semibold">Back to Home</a>
+              <Link href="/" className="rounded-lg border px-4 py-2 font-semibold">Back to Home</Link>
             </div>
           </div>
         )}
