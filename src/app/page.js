@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -30,33 +30,13 @@ export default function Home() {
     router.push(`/quote?query=${encodeURIComponent(q)}`);
   }
 
-  // Mini calculator
-  const [svc, setSvc] = useState("repointing");
-  const [len, setLen] = useState("");
-  const [ht, setHt] = useState("");
-  const [valley, setValley] = useState("");
-
-  const [low, high] = useMemo(() => {
-    const n = (v) => Number(String(v).replace(",", ".")) || 0;
-    let base = 0;
-    if (svc === "repointing") base = n(len) * n(ht) * 58;
-    if (svc === "sealing") base = n(len) * n(ht) * 12;
-    if (svc === "roof-valley") base = n(valley) * 200;
-    return [base * 0.9, base * 1.2];
-  }, [svc, len, ht, valley]);
-
-  const gbp = (x) =>
-    new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(
-      Math.max(0, Math.round(x))
-    );
-
   return (
     <main className="min-h-screen bg-white text-gray-900">
       {/* HERO */}
       <section className="relative bg-gray-900 text-white">
         <img
-          src="https://images.unsplash.com/photo-1600585152220-90363fe7e115?auto=format&fit=crop&w=2000&q=80"
-          alt="Building site"
+          src="https://images.unsplash.com/photo-1600585152938-3eaa35236e03?auto=format&fit=crop&w=2000&q=80"
+          alt="Construction project"
           className="absolute inset-0 w-full h-full object-cover opacity-40"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 to-black/40"></div>
@@ -71,22 +51,22 @@ export default function Home() {
           </p>
 
           {/* Search */}
-          <form onSubmit={onSearchSubmit} className="mt-8 max-w-xl mx-auto">
-            <div className="flex items-stretch gap-2">
+          <form onSubmit={onSearchSubmit} className="mt-8 max-w-2xl mx-auto">
+            <div className="flex items-stretch gap-3">
               <input
-                className="flex-1 rounded-xl border px-4 py-3 text-black"
+                className="flex-1 rounded-2xl bg-white text-gray-900 placeholder-gray-500 px-5 py-4 border border-white/30 shadow-lg"
                 placeholder={suggestions[sIndex]}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
               <button
                 type="submit"
-                className="rounded-xl px-5 py-3 bg-teal-500 text-white font-semibold hover:bg-teal-600"
+                className="rounded-2xl px-7 py-4 bg-teal-500 text-white font-semibold hover:bg-teal-600 shadow-lg"
               >
                 Get Estimate
               </button>
             </div>
-            <p className="mt-2 text-xs text-gray-300">Try: “{suggestions[(sIndex + 1) % suggestions.length]}”</p>
+            <p className="mt-3 text-sm text-gray-200">Try: “{suggestions[(sIndex + 1) % suggestions.length]}”</p>
           </form>
 
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
@@ -121,7 +101,7 @@ export default function Home() {
 
       {/* HOW IT WORKS */}
       <section className="mx-auto max-w-6xl px-6 py-16">
-        <h2 className="text-3xl font-bold text-center text-navy-900">How it works</h2>
+        <h2 className="text-3xl font-bold text-center text-gray-900">How it works</h2>
         <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
           <div className="rounded-2xl border p-6 hover:border-teal-500 bg-gray-50">
             <div className="text-4xl">📝</div>
@@ -141,83 +121,42 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SERVICES GRID */}
+      {/* SERVICES GRID — like the screenshot, no prices */}
       <section className="bg-gray-50 border-y">
         <div className="mx-auto max-w-6xl px-6 py-16">
           <h2 className="text-3xl font-bold text-center text-teal-600">Our Services</h2>
-          <p className="text-center text-gray-600 mt-2">From small fixes to large builds — we cover it all.</p>
-          <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <p className="text-center text-gray-600 mt-2">Browse our most popular categories</p>
+
+          <div className="mt-12 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             {[
-              { name: "Roofing", cost: "from £150/m²" },
-              { name: "Extensions", cost: "from £1,200/m²" },
-              { name: "Brickwork", cost: "from £60/m²" },
-              { name: "Kitchens", cost: "from £6,000" },
-              { name: "Bathrooms", cost: "from £4,000" },
-              { name: "Driveways", cost: "from £80/m²" },
-              { name: "Electrical", cost: "from £50/hr" },
-              { name: "Plumbing", cost: "from £60/hr" },
+              { name: "Plumber", icon: "🚰" },
+              { name: "Electrician", icon: "⚡" },
+              { name: "Roofer", icon: "🏠" },
+              { name: "Builder", icon: "👷" },
+              { name: "Gardener", icon: "🪴" },
+              { name: "Painter", icon: "🖌️" },
             ].map((s, i) => (
               <Link
                 key={i}
-                href={`/quote?service=${s.name.toLowerCase()}`}
-                className="rounded-2xl border bg-white p-6 hover:shadow-md hover:border-teal-500 transition"
+                href={`/quote?service=${encodeURIComponent(s.name.toLowerCase())}`}
+                className="rounded-3xl bg-white border border-gray-200 p-6 text-center hover:shadow-md hover:border-teal-500 transition"
               >
-                <div className="h-24 w-full rounded-xl bg-gray-100 flex items-center justify-center text-gray-400">
-                  <span className="text-sm">Image</span>
-                </div>
-                <h3 className="mt-4 font-semibold">{s.name}</h3>
-                <p className="text-sm text-gray-500">{s.cost}</p>
-                <p className="text-sm text-teal-500 mt-1">Get instant estimate →</p>
+                <div className="text-4xl">{s.icon}</div>
+                <div className="mt-3 font-semibold text-gray-900">{s.name}</div>
               </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* MINI CALCULATOR */}
-      <section className="mx-auto max-w-5xl px-6 py-16">
-        <div className="rounded-3xl border p-8 bg-white shadow">
-          <h3 className="text-2xl font-semibold text-teal-600">Quick estimate preview</h3>
-          <p className="text-sm text-gray-600 mt-1">Choose a service and size to see a ballpark now.</p>
-
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-3">
-            <select value={svc} onChange={(e) => setSvc(e.target.value)} className="rounded-lg border px-3 py-2">
-              <option value="repointing">Repointing</option>
-              <option value="roof-valley">Roof Valley</option>
-              <option value="sealing">Wall Sealing</option>
-            </select>
-
-            {(svc === "repointing" || svc === "sealing") && (
-              <>
-                <input className="rounded-lg border px-3 py-2" placeholder="Length (m)" value={len} onChange={(e) => setLen(e.target.value)} />
-                <input className="rounded-lg border px-3 py-2" placeholder="Height (m)" value={ht} onChange={(e) => setHt(e.target.value)} />
-              </>
-            )}
-
-            {svc === "roof-valley" && (
-              <input className="rounded-lg border px-3 py-2 md:col-span-2" placeholder="Valley length (m)" value={valley} onChange={(e) => setValley(e.target.value)} />
-            )}
-
-            <Link href={`/quote?service=${svc}`} className="rounded-lg bg-orange-500 text-white px-4 py-2 font-semibold hover:bg-orange-600 text-center">
-              Full Quote →
-            </Link>
-          </div>
-
-          <div className="mt-3 text-sm">
-            <span className="font-semibold">Estimated range:</span>{" "}
-            <span className="text-teal-600">{gbp(low)}</span> – <span className="text-teal-600">{gbp(high)}</span>{" "}
-            <span className="text-gray-500">(subject to survey)</span>
-          </div>
-        </div>
-      </section>
-
-      {/* WHY TRUST US */}
+      {/* WHY TRUST US (with working image) */}
       <section className="bg-gray-900 text-white py-16">
         <div className="mx-auto max-w-6xl px-6 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           <img
-            src="https://images.unsplash.com/photo-1600585152938-3eaa35236e03?auto=format&fit=crop&w=800&q=80"
+            src="https://images.unsplash.com/photo-1600607687920-4ce9ce9c8d49?auto=format&fit=crop&w=1200&q=80"
             alt="Builder handshake"
-            className="rounded-2xl shadow-lg"
+            className="rounded-2xl shadow-lg w-full h-72 md:h-96 object-cover"
+            loading="lazy"
           />
           <div>
             <h2 className="text-3xl font-bold">Why homeowners trust us</h2>
@@ -255,9 +194,9 @@ export default function Home() {
           <h2 className="text-3xl font-bold text-center text-teal-600">Cost guides & advice</h2>
           <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { title: "How much does repointing cost in Kent?", img: "https://images.unsplash.com/photo-1600585152938-3eaa35236e03?auto=format&fit=crop&w=600&q=80" },
-              { title: "Roof repair costs explained", img: "https://images.unsplash.com/photo-1597003723183-d84e3b31cae6?auto=format&fit=crop&w=600&q=80" },
-              { title: "Do you need planning permission for an extension?", img: "https://images.unsplash.com/photo-1600585152934-7c3f98b9f95a?auto=format&fit=crop&w=600&q=80" },
+              { title: "How much does repointing cost in Kent?", img: "https://images.unsplash.com/photo-1493244040629-496f6d136cc3?auto=format&fit=crop&w=600&q=80" },
+              { title: "Roof repair costs explained", img: "https://images.unsplash.com/photo-1581093458791-9d1f0b1dfd4a?auto=format&fit=crop&w=600&q=80" },
+              { title: "Do you need planning permission for an extension?", img: "https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=600&q=80" },
             ].map((g, i) => (
               <a key={i} href="#" className="rounded-2xl border bg-white p-4 hover:shadow-md hover:border-teal-500 transition">
                 <img src={g.img} alt={g.title} className="rounded-lg w-full h-40 object-cover" />
@@ -284,7 +223,7 @@ export default function Home() {
       </section>
 
       {/* FOOTER */}
-      <footer className="bg-navy-900 text-gray-200">
+      <footer className="bg-gray-900 text-gray-200">
         <div className="mx-auto max-w-6xl px-6 py-12 grid grid-cols-1 md:grid-cols-3 gap-8 text-sm">
           <div>
             <h3 className="font-semibold text-white">Contact</h3>
