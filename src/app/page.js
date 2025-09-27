@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function Home() {
   const router = useRouter();
 
-  // Rotating search suggestions
+  // ----------------- Rotating search suggestions -----------------
   const suggestions = [
     "Leaky roof",
     "Wall needs repointing",
@@ -30,16 +30,62 @@ export default function Home() {
     router.push(`/quote?query=${encodeURIComponent(q)}`);
   }
 
+  // ----------------- Services carousel (like screenshots) -----------------
+  const services = [
+    { name: "Handyman", icon: "🧰" },
+    { name: "Locksmith", icon: "🔑" },
+    { name: "Bathrooms", icon: "🛁" },
+    { name: "Tiler - Tiling", icon: "🧱" },
+    { name: "Central Heating", icon: "🌡️" },
+    { name: "Gas Boiler Servicing / Repair", icon: "🔥" },
+    { name: "Landscaper", icon: "⛰️" },
+    { name: "Carpenter", icon: "🪚" },
+    { name: "Plasterer", icon: "🛠️" },
+    { name: "Driveways / Patios / Paths", icon: "🛤️" },
+    { name: "Fencing / Gates", icon: "🚧" },
+    { name: "Tree Surgeon", icon: "🌳" },
+  ];
+
+  // responsive items-per-view
+  const [perView, setPerView] = useState(6);
+  useEffect(() => {
+    const calc = () => {
+      const w = window.innerWidth;
+      if (w >= 1536) setPerView(6);
+      else if (w >= 1280) setPerView(6);
+      else if (w >= 1024) setPerView(5);
+      else if (w >= 640) setPerView(3);
+      else setPerView(2);
+    };
+    calc();
+    window.addEventListener("resize", calc);
+    return () => window.removeEventListener("resize", calc);
+  }, []);
+
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(services.length / perView)), [services.length, perView]);
+  const [page, setPage] = useState(0);
+  useEffect(() => {
+    // snap back if resizing reduced pages
+    if (page > totalPages - 1) setPage(totalPages - 1);
+  }, [totalPages, page]);
+
+  const trackRef = useRef(null);
+  const percentPerPage = useMemo(() => 100 / totalPages, [totalPages]);
+
+  const prevPage = () => setPage((p) => Math.max(0, p - 1));
+  const nextPage = () => setPage((p) => Math.min(totalPages - 1, p + 1));
+
+  // ----------------- Page -----------------
   return (
     <main className="min-h-screen bg-white text-gray-900">
       {/* HERO */}
       <section className="relative bg-gray-900 text-white">
         <img
-          src="https://images.unsplash.com/photo-1600585152938-3eaa35236e03?auto=format&fit=crop&w=2000&q=80"
+          src="https://images.unsplash.com/photo-1600585152220-90363fe7e115?auto=format&fit=crop&w=2000&q=80"
           alt="Construction project"
           className="absolute inset-0 w-full h-full object-cover opacity-40"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/70 to-black/40"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 to-black/40" />
 
         <div className="relative mx-auto max-w-6xl px-6 pt-20 pb-24 text-center">
           <h1 className="text-4xl md:text-6xl font-extrabold leading-tight">
@@ -121,30 +167,64 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SERVICES GRID — like the screenshot, no prices */}
+      {/* SERVICES CAROUSEL (like your screenshots, NO PRICES) */}
       <section className="bg-gray-50 border-y">
         <div className="mx-auto max-w-6xl px-6 py-16">
-          <h2 className="text-3xl font-bold text-center text-teal-600">Our Services</h2>
-          <p className="text-center text-gray-600 mt-2">Browse our most popular categories</p>
+          <h2 className="text-3xl font-bold text-center text-gray-900">Browse our most popular categories</h2>
 
-          <div className="mt-12 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-            {[
-              { name: "Plumber", icon: "🚰" },
-              { name: "Electrician", icon: "⚡" },
-              { name: "Roofer", icon: "🏠" },
-              { name: "Builder", icon: "👷" },
-              { name: "Gardener", icon: "🪴" },
-              { name: "Painter", icon: "🖌️" },
-            ].map((s, i) => (
-              <Link
-                key={i}
-                href={`/quote?service=${encodeURIComponent(s.name.toLowerCase())}`}
-                className="rounded-3xl bg-white border border-gray-200 p-6 text-center hover:shadow-md hover:border-teal-500 transition"
+          <div className="relative mt-10">
+            {/* Arrows */}
+            <button
+              aria-label="Previous"
+              onClick={prevPage}
+              className="hidden sm:flex absolute -left-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 items-center justify-center rounded-xl border bg-white shadow hover:border-teal-500"
+            >
+              ‹
+            </button>
+            <button
+              aria-label="Next"
+              onClick={nextPage}
+              className="hidden sm:flex absolute -right-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 items-center justify-center rounded-xl border bg-white shadow hover:border-teal-500"
+            >
+              ›
+            </button>
+
+            {/* Track */}
+            <div className="overflow-hidden">
+              <div
+                ref={trackRef}
+                className="flex transition-transform duration-500 ease-out"
+                style={{ transform: `translateX(-${page * percentPerPage}%)`, width: `${100 * totalPages}%` }}
               >
-                <div className="text-4xl">{s.icon}</div>
-                <div className="mt-3 font-semibold text-gray-900">{s.name}</div>
-              </Link>
-            ))}
+                {services.map((s, i) => (
+                  <div
+                    key={i}
+                    className="px-2"
+                    style={{ width: `${100 / (perView * totalPages)}%` }}
+                  >
+                    <Link
+                      href={`/quote?service=${encodeURIComponent(s.name.toLowerCase())}`}
+                      className="block rounded-3xl bg-white border border-gray-200 p-6 text-center hover:shadow-md hover:border-teal-500 transition h-full"
+                    >
+                      <div className="text-4xl text-indigo-500">{s.icon}</div>
+                      <div className="mt-3 font-semibold text-[#0b0c4e]">{s.name}</div>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Dots */}
+            <div className="mt-6 flex items-center justify-center gap-2">
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setPage(i)}
+                  aria-label={`Go to slide ${i + 1}`}
+                  className={`h-2.5 w-2.5 rounded-full ${i === page ? "bg-gray-500" : "bg-gray-300"}`}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -158,7 +238,7 @@ export default function Home() {
             className="rounded-2xl shadow-lg w-full h-72 md:h-96 object-cover"
             loading="lazy"
           />
-          <div>
+        <div>
             <h2 className="text-3xl font-bold">Why homeowners trust us</h2>
             <ul className="mt-6 space-y-3 text-lg">
               <li>🤖 Instant, fair AI-powered pricing</li>
@@ -204,6 +284,70 @@ export default function Home() {
                 <p className="text-sm text-teal-500 mt-2">Read more →</p>
               </a>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ACTION CARDS (like the screenshot with photos & bold CTAs) */}
+      <section className="bg-white">
+        <div className="mx-auto max-w-6xl px-6 py-16">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Leave a review */}
+            <div className="rounded-3xl bg-white shadow border overflow-hidden">
+              <img
+                src="https://images.unsplash.com/photo-1600486913747-55e117812d8c?auto=format&fit=crop&w=1200&q=80"
+                alt="Leave a review"
+                className="w-full h-48 object-cover"
+              />
+              <div className="p-6">
+                <h3 className="text-2xl font-bold text-[#0b0c4e]">Leave a review</h3>
+                <p className="mt-3 text-gray-600">Have you completed a project recently? Let your tradesperson know how they did.</p>
+                <a
+                  href="#"
+                  className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-red-500 text-white font-semibold py-3 hover:bg-red-600"
+                >
+                  Leave a review
+                </a>
+              </div>
+            </div>
+
+            {/* Tradesperson sign up */}
+            <div className="rounded-3xl bg-white shadow border overflow-hidden">
+              <img
+                src="https://images.unsplash.com/photo-1594322436404-5a0526db4d13?auto=format&fit=crop&w=1200&q=80"
+                alt="Tradesperson sign up"
+                className="w-full h-48 object-cover"
+              />
+              <div className="p-6">
+                <h3 className="text-2xl font-bold text-[#0b0c4e]">Tradesperson sign up</h3>
+                <p className="mt-3 text-gray-600">Over 1 million homeowners visit our site looking for approved and quality tradespeople like you.</p>
+                <a
+                  href="#"
+                  className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-red-500 text-white font-semibold py-3 hover:bg-red-600"
+                >
+                  Join today
+                </a>
+              </div>
+            </div>
+
+            {/* Request a quote */}
+            <div className="rounded-3xl bg-white shadow border overflow-hidden">
+              <img
+                src="https://images.unsplash.com/photo-1550565118-3a14e8d0389c?auto=format&fit=crop&w=1200&q=80"
+                alt="Request a quote"
+                className="w-full h-48 object-cover"
+              />
+              <div className="p-6">
+                <h3 className="text-2xl font-bold text-[#0b0c4e]">Request a quote</h3>
+                <p className="mt-3 text-gray-600">Tell us what you’re looking for and we’ll pass your request on to approved tradespeople.</p>
+                <Link
+                  href="/quote"
+                  className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-red-500 text-white font-semibold py-3 hover:bg-red-600"
+                >
+                  Request a quote
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </section>
