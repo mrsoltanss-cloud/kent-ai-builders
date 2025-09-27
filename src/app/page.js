@@ -7,7 +7,7 @@ import Link from "next/link";
 export default function Home() {
   const router = useRouter();
 
-  // ----------------- Rotating search suggestions -----------------
+  // Rotating search suggestions
   const suggestions = [
     "Leaky roof",
     "Wall needs repointing",
@@ -22,7 +22,7 @@ export default function Home() {
     return () => clearInterval(id);
   }, [suggestions.length]);
 
-  // Search bar → /quote
+  // Search → /quote
   const [query, setQuery] = useState("");
   function onSearchSubmit(e) {
     e.preventDefault();
@@ -30,7 +30,7 @@ export default function Home() {
     router.push(`/quote?query=${encodeURIComponent(q)}`);
   }
 
-  // ----------------- Services carousel -----------------
+  // Services carousel data
   const services = [
     { name: "Plumber", icon: "🚰" },
     { name: "Electrician", icon: "⚡" },
@@ -52,6 +52,7 @@ export default function Home() {
     { name: "Tree Surgeon", icon: "🌳" },
   ];
 
+  // Items per page (responsive)
   const [perView, setPerView] = useState(6);
   useEffect(() => {
     const calc = () => {
@@ -68,14 +69,12 @@ export default function Home() {
   }, []);
   const totalPages = useMemo(() => Math.max(1, Math.ceil(services.length / perView)), [services.length, perView]);
   const [page, setPage] = useState(0);
-  useEffect(() => {
-    if (page > totalPages - 1) setPage(totalPages - 1);
-  }, [totalPages, page]);
+  useEffect(() => { if (page > totalPages - 1) setPage(totalPages - 1); }, [totalPages, page]);
   const percentPerPage = useMemo(() => 100 / totalPages, [totalPages]);
   const prevPage = () => setPage((p) => Math.max(0, p - 1));
   const nextPage = () => setPage((p) => Math.min(totalPages - 1, p + 1));
 
-  // ----------------- Testimonials slider (auto) -----------------
+  // Testimonials (auto slider)
   const testimonials = [
     { text: "“Great job repointing our wall — instant estimate was spot on.”", name: "Sarah, Maidstone" },
     { text: "“Roof valley fixed in a day. Loved the online quote.”", name: "James, Canterbury" },
@@ -98,9 +97,7 @@ export default function Home() {
   }, []);
   const tPages = useMemo(() => Math.max(1, Math.ceil(testimonials.length / tPerView)), [testimonials.length, tPerView]);
   const [tPage, setTPage] = useState(0);
-  useEffect(() => {
-    if (tPage > tPages - 1) setTPage(tPages - 1);
-  }, [tPages, tPage]);
+  useEffect(() => { if (tPage > tPages - 1) setTPage(tPages - 1); }, [tPages, tPage]);
   useEffect(() => {
     const id = setInterval(() => setTPage((p) => (p + 1) % tPages), 4500);
     return () => clearInterval(id);
@@ -127,35 +124,31 @@ export default function Home() {
             Instant quotes • Verified builders • Guaranteed work
           </p>
 
-          {/* Search */}
-          <form onSubmit={onSearchSubmit} className="mt-8 max-w-2xl mx-auto">
-            <div className="flex items-stretch gap-3">
-              <input
-                className="flex-1 rounded-2xl bg-white text-gray-900 placeholder-gray-500 px-5 py-4 border border-white/30 shadow-lg"
-                placeholder={suggestions[sIndex]}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-              <button
-                type="submit"
-                className="rounded-2xl px-7 py-4 bg-teal-500 text-white font-semibold hover:bg-teal-600 shadow-lg"
-              >
-                Get Estimate
-              </button>
-            </div>
-            <p className="mt-3 text-sm text-gray-200">Try: “{suggestions[(sIndex + 1) % suggestions.length]}”</p>
+          {/* Search (stacks on mobile) */}
+          <form onSubmit={onSearchSubmit} className="mt-8 max-w-2xl mx-auto flex flex-col sm:flex-row gap-3">
+            <input
+              className="flex-1 rounded-2xl bg-white text-gray-900 placeholder-gray-500 px-5 py-4 border border-white/30 shadow-lg text-base min-h-[48px]"
+              placeholder={suggestions[sIndex]}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <button
+              type="submit"
+              className="rounded-2xl px-7 py-4 bg-teal-500 text-white font-semibold hover:bg-teal-600 shadow-lg w-full sm:w-auto min-h-[48px] text-base"
+            >
+              Get Estimate
+            </button>
           </form>
 
+          <p className="mt-3 text-sm text-gray-200">Try: “{suggestions[(sIndex + 1) % suggestions.length]}”</p>
+
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/quote"
-              className="rounded-xl px-6 py-3 font-semibold bg-teal-500 text-white hover:bg-teal-600"
-            >
+            <Link href="/quote" className="rounded-xl px-6 py-3 font-semibold bg-teal-500 text-white hover:bg-teal-600 w-full sm:w-auto min-h-[48px]">
               Get My Instant Estimate
             </Link>
             <a
               href="https://wa.me/447000000000"
-              className="rounded-xl px-6 py-3 font-semibold border border-teal-400 text-teal-400 hover:bg-teal-50 hover:text-teal-600 bg-white/10"
+              className="rounded-xl px-6 py-3 font-semibold border border-teal-400 text-teal-400 hover:bg-teal-50 hover:text-teal-600 bg-white/10 w-full sm:w-auto min-h-[48px]"
             >
               Talk on WhatsApp
             </a>
@@ -177,9 +170,9 @@ export default function Home() {
       </section>
 
       {/* HOW IT WORKS */}
-      <section className="mx-auto max-w-6xl px-6 py-16">
-        <h2 className="text-3xl font-bold text-center text-gray-900">How it works</h2>
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+      <section className="mx-auto max-w-6xl px-6 py-12 sm:py-16">
+        <h2 className="text-2xl sm:text-3xl font-bold text-center text-gray-900">How it works</h2>
+        <div className="mt-8 sm:mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 text-center">
           <div className="rounded-2xl border p-6 hover:border-teal-500 bg-gray-50">
             <div className="text-4xl">📝</div>
             <h3 className="mt-4 font-semibold text-lg">Tell us about your job</h3>
@@ -198,34 +191,32 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SERVICES CAROUSEL */}
+      {/* SERVICES — snap scroll on mobile, paged on desktop */}
       <section className="bg-gray-50 border-y">
-        <div className="mx-auto max-w-6xl px-6 py-16">
-          <h2 className="text-3xl font-bold text-center text-[#0b0c4e]">Browse our most popular categories</h2>
+        <div className="mx-auto max-w-6xl px-6 py-12 sm:py-16">
+          <h2 className="text-2xl sm:text-3xl font-bold text-center text-[#0b0c4e]">Browse our most popular categories</h2>
 
-          <div className="relative mt-10">
+          <div className="relative mt-8 sm:mt-10">
+            {/* Desktop arrows */}
             <button
               aria-label="Previous"
               onClick={prevPage}
               className="hidden sm:flex absolute -left-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 items-center justify-center rounded-xl border bg-white shadow hover:border-teal-500"
-            >
-              ‹
-            </button>
+            >‹</button>
             <button
               aria-label="Next"
               onClick={nextPage}
               className="hidden sm:flex absolute -right-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 items-center justify-center rounded-xl border bg-white shadow hover:border-teal-500"
-            >
-              ›
-            </button>
+            >›</button>
 
-            <div className="overflow-hidden">
+            {/* Mobile: natural swipe + snap; Desktop: paged transform */}
+            <div className="overflow-x-auto sm:overflow-hidden [-webkit-overflow-scrolling:touch]">
               <div
-                className="flex transition-transform duration-500 ease-out"
+                className="flex sm:transition-transform sm:duration-500 sm:ease-out snap-x snap-mandatory sm:snap-none"
                 style={{ transform: `translateX(-${page * percentPerPage}%)`, width: `${100 * totalPages}%` }}
               >
                 {services.map((s, i) => (
-                  <div key={i} className="px-2" style={{ width: `${100 / (perView * totalPages)}%` }}>
+                  <div key={i} className="px-2 snap-center sm:snap-none shrink-0" style={{ width: `${100 / (perView * totalPages)}%` }}>
                     <Link
                       href={`/quote?service=${encodeURIComponent(s.name.toLowerCase())}`}
                       className="block rounded-3xl bg-white border border-gray-200 p-6 text-center hover:shadow-md hover:border-teal-500 transition h-full"
@@ -238,6 +229,7 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Dots */}
             <div className="mt-6 flex items-center justify-center gap-2">
               {Array.from({ length: totalPages }).map((_, i) => (
                 <button
@@ -252,28 +244,26 @@ export default function Home() {
         </div>
       </section>
 
-      {/* WHY TRUST US — now with photo collage + safety markers */}
-      <section className="bg-gray-900 text-white py-16">
-        <div className="mx-auto max-w-6xl px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          {/* Collage */}
-          <div className="grid grid-cols-2 gap-4">
+      {/* WHY TRUST US (photo collage + badges) */}
+      <section className="bg-gray-900 text-white py-12 sm:py-16">
+        <div className="mx-auto max-w-6xl px-6 grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-12 items-center">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <img
               src="https://images.unsplash.com/photo-1600607687920-4ce9ce9c8d49?auto=format&fit=crop&w=800&q=80"
-              alt="Builder handshake"
-              className="rounded-2xl shadow-lg w-full h-56 md:h-80 object-cover"
+              alt="Handshake"
+              className="w-full h-56 sm:h-80 object-cover rounded-2xl shadow-lg"
               loading="lazy"
             />
             <img
               src="https://images.unsplash.com/photo-1581091014527-3d4a5b4a0f2b?auto=format&fit=crop&w=800&q=80"
               alt="Team on site"
-              className="rounded-2xl shadow-lg w-full h-56 md:h-80 object-cover"
+              className="w-full h-56 sm:h-80 object-cover rounded-2xl shadow-lg"
               loading="lazy"
             />
           </div>
 
-          {/* Content */}
           <div>
-            <h2 className="text-3xl font-bold">Why homeowners trust us</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold">Why homeowners trust us</h2>
             <ul className="mt-6 space-y-3 text-lg">
               <li>🤖 Instant, fair AI-powered pricing</li>
               <li>👷 Verified, experienced local builders</li>
@@ -281,7 +271,6 @@ export default function Home() {
               <li>🚀 Fast response + free survey</li>
             </ul>
 
-            {/* Stats row */}
             <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
                 { k: "2,300+", v: "Projects completed" },
@@ -295,7 +284,6 @@ export default function Home() {
               ))}
             </div>
 
-            {/* Safety markers (no brand logos) */}
             <div className="mt-8 flex flex-wrap items-center gap-3">
               {[
                 "DBS-checked teams",
@@ -318,17 +306,17 @@ export default function Home() {
         </div>
       </section>
 
-      {/* TESTIMONIALS — auto slider */}
-      <section className="mx-auto max-w-6xl px-6 py-16">
-        <h2 className="text-3xl font-bold text-center text-teal-600">What our customers say</h2>
-        <div className="relative mt-10">
-          <div className="overflow-hidden">
+      {/* TESTIMONIALS — swipe + auto */}
+      <section className="mx-auto max-w-6xl px-6 py-12 sm:py-16">
+        <h2 className="text-2xl sm:text-3xl font-bold text-center text-teal-600">What our customers say</h2>
+        <div className="relative mt-8 sm:mt-10">
+          <div className="overflow-x-auto sm:overflow-hidden [-webkit-overflow-scrolling:touch]">
             <div
-              className="flex transition-transform duration-600 ease-out"
+              className="flex sm:transition-transform sm:duration-600 sm:ease-out snap-x snap-mandatory sm:snap-none"
               style={{ transform: `translateX(-${tPage * tPercentPerPage}%)`, width: `${100 * tPages}%` }}
             >
               {testimonials.map((t, i) => (
-                <div key={i} className="px-2" style={{ width: `${100 / (tPerView * tPages)}%` }}>
+                <div key={i} className="px-2 snap-center sm:snap-none shrink-0" style={{ width: `${100 / (tPerView * tPages)}%` }}>
                   <div className="h-full rounded-2xl border p-6 bg-gray-50 hover:border-teal-500">
                     <div className="text-yellow-500">★★★★★</div>
                     <p className="mt-4 text-gray-700">{t.text}</p>
@@ -349,29 +337,14 @@ export default function Home() {
               />
             ))}
           </div>
-
-          <div className="mt-4 flex justify-center gap-4">
-            <button
-              onClick={() => setTPage((p) => (p - 1 + tPages) % tPages)}
-              className="rounded-xl border bg-white px-3 py-2 shadow hover:border-teal-500"
-            >
-              ‹ Prev
-            </button>
-            <button
-              onClick={() => setTPage((p) => (p + 1) % tPages)}
-              className="rounded-xl border bg-white px-3 py-2 shadow hover:border-teal-500"
-            >
-              Next ›
-            </button>
-          </div>
         </div>
       </section>
 
       {/* GUIDES */}
       <section className="bg-gray-50 border-y">
-        <div className="mx-auto max-w-6xl px-6 py-16">
-          <h2 className="text-3xl font-bold text-center text-teal-600">Cost guides & advice</h2>
-          <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="mx-auto max-w-6xl px-6 py-12 sm:py-16">
+          <h2 className="text-2xl sm:text-3xl font-bold text-center text-teal-600">Cost guides & advice</h2>
+          <div className="mt-8 sm:mt-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {[
               { title: "How much does repointing cost in Kent?", img: "https://images.unsplash.com/photo-1493244040629-496f6d136cc3?auto=format&fit=crop&w=600&q=80" },
               { title: "Roof repair costs explained", img: "https://images.unsplash.com/photo-1581093458791-9d1f0b1dfd4a?auto=format&fit=crop&w=600&q=80" },
@@ -387,59 +360,38 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ACTION CARDS — teal buttons + reliable photos */}
+      {/* ACTION CARDS (teal buttons) */}
       <section className="bg-white">
-        <div className="mx-auto max-w-6xl px-6 py-16">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="mx-auto max-w-6xl px-6 py-12 sm:py-16">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             <div className="rounded-3xl bg-white shadow border overflow-hidden">
-              <img
-                src="https://images.unsplash.com/photo-1581093588401-16ec097d4b86?auto=format&fit=crop&w=1200&q=80"
-                alt="Leave a review"
-                className="w-full h-48 object-cover"
-              />
+              <img src="https://images.unsplash.com/photo-1581093588401-16ec097d4b86?auto=format&fit=crop&w=1200&q=80" alt="Leave a review" className="w-full h-48 object-cover" />
               <div className="p-6">
                 <h3 className="text-2xl font-bold text-[#0b0c4e]">Leave a review</h3>
                 <p className="mt-3 text-gray-600">Have you completed a project recently? Let your tradesperson know how they did.</p>
-                <a
-                  href="#"
-                  className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-teal-500 text-white font-semibold py-3 hover:bg-teal-600"
-                >
+                <a href="#" className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-teal-500 text-white font-semibold py-3 hover:bg-teal-600">
                   Leave a review
                 </a>
               </div>
             </div>
 
             <div className="rounded-3xl bg-white shadow border overflow-hidden">
-              <img
-                src="https://images.unsplash.com/photo-1604145559206-e3bce0040e8d?auto=format&fit=crop&w=1200&q=80"
-                alt="Tradesperson sign up"
-                className="w-full h-48 object-cover"
-              />
+              <img src="https://images.unsplash.com/photo-1604145559206-e3bce0040e8d?auto=format&fit=crop&w=1200&q=80" alt="Tradesperson sign up" className="w-full h-48 object-cover" />
               <div className="p-6">
                 <h3 className="text-2xl font-bold text-[#0b0c4e]">Tradesperson sign up</h3>
                 <p className="mt-3 text-gray-600">Over 1 million homeowners visit our site looking for approved and quality tradespeople like you.</p>
-                <a
-                  href="#"
-                  className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-teal-500 text-white font-semibold py-3 hover:bg-teal-600"
-                >
+                <a href="#" className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-teal-500 text-white font-semibold py-3 hover:bg-teal-600">
                   Join today
                 </a>
               </div>
             </div>
 
             <div className="rounded-3xl bg-white shadow border overflow-hidden">
-              <img
-                src="https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80"
-                alt="Request a quote"
-                className="w-full h-48 object-cover"
-              />
+              <img src="https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80" alt="Request a quote" className="w-full h-48 object-cover" />
               <div className="p-6">
                 <h3 className="text-2xl font-bold text-[#0b0c4e]">Request a quote</h3>
                 <p className="mt-3 text-gray-600">Tell us what you’re looking for and we’ll pass your request on to approved tradespeople.</p>
-                <Link
-                  href="/quote"
-                  className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-teal-500 text-white font-semibold py-3 hover:bg-teal-600"
-                >
+                <Link href="/quote" className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-teal-500 text-white font-semibold py-3 hover:bg-teal-600">
                   Request a quote
                 </Link>
               </div>
@@ -448,19 +400,32 @@ export default function Home() {
         </div>
       </section>
 
-      {/* FINAL CTA — teal */}
-      <section className="bg-teal-600 text-white text-center py-16">
-        <h2 className="text-3xl font-bold">Ready to build smarter?</h2>
+      {/* FINAL CTA (teal) */}
+      <section className="bg-teal-600 text-white text-center py-12 sm:py-16">
+        <h2 className="text-2xl sm:text-3xl font-bold">Ready to build smarter?</h2>
         <p className="mt-4 text-lg">Kent’s only AI-powered builder. Get your instant estimate today.</p>
-        <div className="mt-8 flex gap-4 justify-center">
-          <Link href="/quote" className="rounded-xl px-6 py-3 font-semibold bg-white text-teal-700 hover:bg-gray-100">
+        <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+          <Link href="/quote" className="rounded-xl px-6 py-3 font-semibold bg-white text-teal-700 hover:bg-gray-100 w-full sm:w-auto min-h-[48px]">
             Get My Instant Estimate
           </Link>
-          <a href="https://wa.me/447000000000" className="rounded-xl px-6 py-3 font-semibold border border-white text-white hover:bg-teal-700">
+          <a href="https://wa.me/447000000000" className="rounded-xl px-6 py-3 font-semibold border border-white text-white hover:bg-teal-700 w-full sm:w-auto min-h-[48px]">
             Talk on WhatsApp
           </a>
         </div>
       </section>
+
+      {/* Sticky mobile CTA */}
+      <div className="fixed inset-x-0 bottom-0 z-30 bg-white/90 backdrop-blur border-t px-4 py-3 sm:hidden">
+        <div className="flex gap-3">
+          <Link href="/quote" className="flex-1 rounded-lg bg-teal-600 text-white font-semibold py-3 text-center">
+            Get My Instant Estimate
+          </Link>
+          <a href="https://wa.me/447000000000" className="rounded-lg border border-teal-600 text-teal-700 font-semibold px-4 py-3">
+            WhatsApp
+          </a>
+        </div>
+        <div className="pt-[env(safe-area-inset-bottom)]" />
+      </div>
 
       {/* FOOTER */}
       <footer className="bg-gray-900 text-gray-200">
