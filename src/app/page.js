@@ -14,32 +14,19 @@ export default function Home() {
   ];
   const [sIndex, setSIndex] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => {
-      setSIndex((i) => (i + 1) % suggestions.length);
-    }, 2400);
+    const id = setInterval(() => setSIndex((i) => (i + 1) % suggestions.length), 2400);
     return () => clearInterval(id);
   }, [suggestions.length]);
 
-  // Simple testimonials slider
+  // Testimonials (light auto-rotate)
   const reviews = [
-    {
-      quote: "They handled the extension from start to finish. Stress-free.",
-      name: "Mark, Medway",
-    },
-    {
-      quote: "Fair price, tidy team, and kept us informed daily.",
-      name: "Amelia, Tonbridge",
-    },
-    {
-      quote: "Emergency leak sorted within hours. Brilliant.",
-      name: "Tom, Sevenoaks",
-    },
+    { quote: "They handled the extension from start to finish. Stress-free.", name: "Mark, Medway" },
+    { quote: "Fair price, tidy team, and kept us informed daily.", name: "Amelia, Tonbridge" },
+    { quote: "Emergency leak sorted within hours. Brilliant.", name: "Tom, Sevenoaks" },
   ];
   const [rIndex, setRIndex] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => {
-      setRIndex((i) => (i + 1) % reviews.length);
-    }, 3800);
+    const id = setInterval(() => setRIndex((i) => (i + 1) % reviews.length), 3800);
     return () => clearInterval(id);
   }, [reviews.length]);
 
@@ -60,46 +47,51 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-white text-gray-900">
-
-      {/* HEADER BAR (kept simple to match your design shell) */}
-      <header className="w-full border-b bg-white/90 backdrop-blur sticky top-0 z-40">
-        <div className="mx-auto max-w-6xl px-6 h-14 flex items-center justify-between">
+      {/* HEADER (mobile-friendly) */}
+      <header className="sticky top-0 z-40 w-full border-b bg-white/90 backdrop-blur">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-teal-600 text-white text-xs font-bold">✓</span>
-            <span className="font-bold">TradeSure</span>
+            <span className="font-bold text-sm sm:text-base">TradeSure</span>
           </div>
           <nav className="hidden md:flex items-center gap-6 text-sm">
             <Link href="/" className="hover:text-teal-700">Homeowner</Link>
             <Link href="/trades/join" className="hover:text-teal-700">Trades</Link>
           </nav>
           <div className="flex items-center gap-2">
-            <Link href="/trades/join" className="hidden sm:inline-flex rounded-full border px-3 py-1.5 text-sm hover:bg-gray-50">Trade sign up</Link>
-            <Link href="/login" className="rounded-full bg-teal-600 text-white px-3 py-1.5 text-sm hover:bg-teal-700">Log in</Link>
+            <Link href="/trades/join" className="hidden sm:inline-flex rounded-full border px-3 py-1.5 text-sm hover:bg-gray-50">
+              Trade sign up
+            </Link>
+            <Link href="/login" className="rounded-full bg-teal-600 text-white px-3 py-1.5 text-sm hover:bg-teal-700">
+              Log in
+            </Link>
           </div>
         </div>
       </header>
 
-      {/* ============== HERO ============== */}
+      {/* ============== HERO (photo + overlay, fully responsive) ============== */}
       <section className="relative overflow-hidden">
-        {/* Hero background */}
         <Image
           src="/images/hero-kitchen.jpg"
           alt="Modern kitchen"
           fill
           priority
-          className="object-cover brightness-[.45]"
+          sizes="100vw"
+          className="object-cover"
         />
-        <div className="relative mx-auto max-w-6xl px-6 pt-16 pb-14 md:pt-20 md:pb-24">
-          <h1 className="text-white font-extrabold leading-tight text-4xl md:text-6xl">
+        <div className="absolute inset-0 bg-black/55" />
+
+        <div className="relative mx-auto max-w-6xl px-4 sm:px-6 pt-12 sm:pt-16 md:pt-20 pb-10 sm:pb-14 md:pb-24 text-center md:text-left">
+          <h1 className="text-white font-extrabold leading-tight text-3xl sm:text-4xl md:text-6xl">
             Build Smarter. Faster. Fairer.
             <br />
             <span className="text-teal-400">Kent’s #1 AI-Powered Builder</span>
           </h1>
-          <p className="mt-4 text-gray-100 text-lg">
+          <p className="mt-3 sm:mt-4 text-white/90 text-sm sm:text-base md:text-lg">
             Instant quotes • Verified builders • Guaranteed work
           </p>
 
-          {/* Search + button (fixed to JS, no TS cast) */}
+          {/* Search form */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -110,94 +102,97 @@ export default function Home() {
                   : suggestions[sIndex];
               window.location.href = `/quote?query=${encodeURIComponent(q)}`;
             }}
-            className="mt-6 max-w-3xl"
+            className="mt-5 sm:mt-6 max-w-3xl mx-auto md:mx-0"
+            aria-label="Get an instant estimate"
           >
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <input
                 name="q"
-                className="flex-1 rounded-2xl bg-white/90 backdrop-blur border border-black/10 px-5 py-4 outline-none shadow-[inset_0_0_0_1px_rgba(0,0,0,.1)]"
+                className="flex-1 w-full rounded-2xl bg-white/95 backdrop-blur border border-white/20 px-5 py-4 outline-none shadow"
                 placeholder={suggestions[sIndex]}
+                aria-label="Describe your job"
+                inputMode="text"
               />
               <button
                 type="submit"
-                className="rounded-2xl px-6 py-4 bg-teal-600 text-white font-semibold hover:bg-teal-700 shadow-md"
+                className="w-full sm:w-auto rounded-2xl px-6 py-4 bg-teal-600 text-white font-semibold hover:bg-teal-700 shadow-md"
               >
                 Get Estimate
               </button>
             </div>
-            <p className="mt-3 text-sm text-gray-100">
+            <p className="mt-3 text-xs sm:text-sm text-white/90">
               Try: “{suggestions[(sIndex + 1) % suggestions.length]}”
             </p>
           </form>
 
-          {/* CTAs under search */}
-          <div className="mt-6 flex flex-wrap gap-4">
+          {/* Quick CTAs */}
+          <div className="mt-5 sm:mt-6 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center md:justify-start">
             <Link
               href="/quote"
-              className="rounded-xl bg-teal-600 text-white px-5 py-3 font-semibold hover:bg-teal-700"
+              className="w-full sm:w-auto text-center rounded-xl bg-teal-600 text-white px-5 py-3 font-semibold hover:bg-teal-700"
             >
               Get My Instant Estimate
             </Link>
             <a
               href="https://wa.me/447000000000"
-              className="rounded-xl border border-white/70 text-white px-5 py-3 font-semibold hover:bg-white hover:text-teal-700"
+              className="w-full sm:w-auto text-center rounded-xl border border-white text-white px-5 py-3 font-semibold hover:bg-white hover:text-teal-700"
             >
               Talk on WhatsApp
             </a>
           </div>
 
-          <p className="mt-4 text-gray-100">
+          <p className="mt-4 text-white/80 text-xs sm:text-sm">
             ★★★★★ Trusted by 2,000+ Kent homeowners • Fully Insured • Free Site Survey
           </p>
         </div>
       </section>
 
       {/* ============== HOW IT WORKS ============== */}
-      <section className="mx-auto max-w-6xl px-6 py-12">
-        <h2 className="text-2xl md:text-3xl font-bold text-center">How it works</h2>
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+      <section className="mx-auto max-w-6xl px-4 sm:px-6 py-10 sm:py-12">
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-center">How it works</h2>
+        <div className="mt-6 sm:mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           {[
             { emoji: "📝", title: "Tell us about your job", text: "Describe your project. Add photos or plans for accuracy." },
             { emoji: "🤖", title: "AI estimates instantly", text: "You get a fair price range based on real job data." },
             { emoji: "👷", title: "Matched with the right builder", text: "Free survey and a fixed confirmed quote." },
           ].map((it, i) => (
-            <div key={i} className="rounded-2xl border p-6 text-center hover:shadow-sm">
-              <div className="text-3xl">{it.emoji}</div>
-              <h3 className="mt-3 font-semibold">{it.title}</h3>
-              <p className="mt-2 text-gray-600">{it.text}</p>
+            <div key={i} className="rounded-2xl border p-4 sm:p-6 text-center hover:shadow-sm">
+              <div className="text-2xl sm:text-3xl">{it.emoji}</div>
+              <h3 className="mt-2 sm:mt-3 font-semibold">{it.title}</h3>
+              <p className="mt-1 sm:mt-2 text-gray-600 text-sm sm:text-base">{it.text}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ============== POPULAR CATEGORIES (slider-style row) ============== */}
+      {/* ============== POPULAR CATEGORIES (touch-friendly scroller) ============== */}
       <section className="bg-white border-y">
-        <div className="mx-auto max-w-6xl px-6 py-12">
-          <h2 className="text-2xl md:text-3xl font-bold text-center">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10 sm:py-12">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-center">
             Browse our most popular categories
           </h2>
 
-          <div className="relative mt-8">
+          <div className="relative mt-6 sm:mt-8">
             <button
               aria-label="scroll left"
               onClick={() => scrollBy(-320)}
-              className="hidden md:block absolute left-0 top-1/2 -translate-y-1/2 bg-white border rounded-full w-10 h-10 grid place-content-center shadow"
+              className="hidden md:grid place-content-center absolute left-0 top-1/2 -translate-y-1/2 bg-white border rounded-full w-10 h-10 shadow"
             >
               ‹
             </button>
 
             <div
               ref={scroller}
-              className="flex gap-5 overflow-x-auto px-2 snap-x snap-mandatory"
+              className="flex gap-4 sm:gap-5 overflow-x-auto px-2 snap-x snap-mandatory scroll-smooth"
             >
               {cats.map((c) => (
                 <Link
                   key={c.key}
                   href={`/services/${c.key}`}
-                  className="min-w-[230px] snap-start rounded-3xl border px-6 py-6 hover:shadow-md hover:border-teal-500 transition bg-white"
+                  className="min-w-[190px] sm:min-w-[230px] snap-start rounded-3xl border px-5 sm:px-6 py-5 sm:py-6 hover:shadow-md hover:border-teal-500 transition bg-white"
                 >
-                  <div className="text-4xl">{c.emoji}</div>
-                  <div className="mt-4 font-semibold">{c.label}</div>
+                  <div className="text-3xl sm:text-4xl">{c.emoji}</div>
+                  <div className="mt-3 sm:mt-4 font-semibold">{c.label}</div>
                 </Link>
               ))}
             </div>
@@ -205,7 +200,7 @@ export default function Home() {
             <button
               aria-label="scroll right"
               onClick={() => scrollBy(320)}
-              className="hidden md:block absolute right-0 top-1/2 -translate-y-1/2 bg-white border rounded-full w-10 h-10 grid place-content-center shadow"
+              className="hidden md:grid place-content-center absolute right-0 top-1/2 -translate-y-1/2 bg-white border rounded-full w-10 h-10 shadow"
             >
               ›
             </button>
@@ -213,121 +208,136 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ============== TRUST (dark section with photos + stats) ============== */}
+      {/* ============== TRUST (stacks on mobile) ============== */}
       <section className="bg-[#0f1b24] text-white">
-        <div className="mx-auto max-w-6xl px-6 py-14 grid md:grid-cols-2 gap-10 items-center">
-          {/* Photo collage */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="relative h-48 md:h-64 rounded-2xl overflow-hidden bg-white/5">
-              <Image src="/images/trust-handshake.jpg" alt="Handshake" fill className="object-cover" />
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-14 grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10 items-center">
+          {/* Photos */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 order-2 md:order-1">
+            <div className="relative h-40 sm:h-48 md:h-64 rounded-2xl overflow-hidden bg-white/5">
+              <Image
+                src="/images/trust-handshake.jpg"
+                alt="Handshake"
+                fill
+                sizes="(max-width: 768px) 50vw, 33vw"
+                className="object-cover"
+              />
             </div>
-            <div className="relative h-48 md:h-64 rounded-2xl overflow-hidden bg-white/5">
-              <Image src="/images/trust-team.jpg" alt="Team on site" fill className="object-cover" />
+            <div className="relative h-40 sm:h-48 md:h-64 rounded-2xl overflow-hidden bg-white/5">
+              <Image
+                src="/images/trust-team.jpg"
+                alt="Team on site"
+                fill
+                sizes="(max-width: 768px) 50vw, 33vw"
+                className="object-cover"
+              />
             </div>
           </div>
 
           {/* Copy + stats */}
-          <div>
-            <h2 className="text-2xl md:text-3xl font-bold">Why homeowners trust us</h2>
-            <ul className="mt-4 space-y-2 text-gray-200">
+          <div className="order-1 md:order-2">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold">Why homeowners trust us</h2>
+            <ul className="mt-3 sm:mt-4 space-y-1.5 sm:space-y-2 text-gray-200 text-sm sm:text-base">
               <li>🤖 Instant, fair AI-powered pricing</li>
               <li>🧑‍🔧 Verified, experienced local builders</li>
               <li>🛡 Fully insured & guaranteed work</li>
               <li>🚀 Fast response + free survey</li>
             </ul>
 
-            {/* Stats */}
-            <div className="mt-6 grid grid-cols-3 gap-4">
+            <div className="mt-5 grid grid-cols-3 gap-3 sm:gap-4">
               {[
-                { big: "2,300+", small: "Projects completed" },
-                { big: "4.9/5", small: "Average rating" },
+                { big: "2,300+", small: "Projects" },
+                { big: "4.9/5", small: "Avg rating" },
                 { big: "10+ yrs", small: "Experience" },
               ].map((s, i) => (
-                <div key={i} className="rounded-xl bg-white/5 px-4 py-4">
-                  <div className="text-2xl font-bold">{s.big}</div>
-                  <div className="text-sm text-gray-300">{s.small}</div>
+                <div key={i} className="rounded-xl bg-white/5 px-3 sm:px-4 py-3 sm:py-4 text-center">
+                  <div className="text-lg sm:text-2xl font-bold">{s.big}</div>
+                  <div className="text-[11px] sm:text-sm text-gray-300">{s.small}</div>
                 </div>
               ))}
             </div>
 
-            {/* Safety markers */}
             <div className="mt-4 flex flex-wrap gap-2">
               {[
                 "DBS-checked teams",
                 "£5m Public Liability",
-                "NICEIC / Gas Safe where required",
+                "NICEIC / Gas Safe",
                 "CSCS qualified",
                 "12-month workmanship guarantee",
               ].map((b, i) => (
-                <span key={i} className="rounded-full bg-white/10 px-3 py-1 text-sm">
+                <span key={i} className="rounded-full bg-white/10 px-3 py-1 text-xs sm:text-sm">
                   {b}
                 </span>
               ))}
             </div>
 
-            <Link href="/quote" className="inline-block mt-6 rounded-xl bg-teal-500 text-white px-5 py-3 font-semibold hover:bg-teal-600">
+            <Link
+              href="/quote"
+              className="inline-block mt-5 rounded-xl bg-teal-500 text-white px-5 py-3 font-semibold hover:bg-teal-600"
+            >
               Get your instant estimate →
             </Link>
           </div>
         </div>
       </section>
 
-      {/* ============== TESTIMONIALS (auto-rotating) ============== */}
-      <section className="mx-auto max-w-6xl px-6 py-14">
-        <h2 className="text-2xl md:text-3xl font-bold text-center text-teal-600">
+      {/* ============== TESTIMONIALS (1 per row on mobile) ============== */}
+      <section className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-14">
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-center text-teal-600">
           What our customers say
         </h2>
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="mt-6 sm:mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           {[0, 1, 2].map((offset) => {
             const i = (rIndex + offset) % reviews.length;
             const r = reviews[i];
             return (
-              <div key={i} className="rounded-3xl border p-6 hover:border-teal-500">
+              <div key={i} className="rounded-3xl border p-4 sm:p-6 hover:border-teal-500">
                 <div className="text-yellow-500">★★★★★</div>
-                <p className="mt-3 text-gray-800">“{r.quote}”</p>
-                <p className="mt-3 text-sm text-gray-500">{r.name}</p>
+                <p className="mt-2 sm:mt-3 text-gray-800 text-sm sm:text-base">“{r.quote}”</p>
+                <p className="mt-2 sm:mt-3 text-xs sm:text-sm text-gray-500">{r.name}</p>
               </div>
             );
           })}
         </div>
       </section>
 
-      {/* ============== COST GUIDES PREVIEW ============== */}
-      <section className="mx-auto max-w-6xl px-6 pb-14">
-        <h2 className="text-2xl md:text-3xl font-bold text-center text-teal-600">
+      {/* ============== COST GUIDES (cards) ============== */}
+      <section className="mx-auto max-w-6xl px-4 sm:px-6 pb-12 sm:pb-14">
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-center text-teal-600">
           Cost guides & advice
         </h2>
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="mt-6 sm:mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           {[
             { href: "/guides/repointing-cost-kent", title: "How much does repointing cost in Kent?", img: "/images/guide-repointing.jpg" },
             { href: "/guides/roof-repair-cost-kent", title: "Roof repair costs explained", img: "/images/guide-roof.jpg" },
             { href: "/guides/loft-conversion-cost-kent", title: "Loft conversion costs (2025)", img: "/images/guide-loft.jpg" },
           ].map((g, i) => (
             <Link key={i} href={g.href} className="rounded-3xl border hover:shadow-md hover:border-teal-500 transition overflow-hidden">
-              <div className="relative h-40">
-                <Image src={g.img} alt={g.title} fill className="object-cover" />
+              <div className="relative h-36 sm:h-40">
+                <Image src={g.img} alt={g.title} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" />
               </div>
-              <div className="p-5">
-                <h3 className="font-semibold">{g.title}</h3>
-                <p className="text-sm text-teal-600 mt-2">Read more →</p>
+              <div className="p-4 sm:p-5">
+                <h3 className="font-semibold text-sm sm:text-base">{g.title}</h3>
+                <p className="text-xs sm:text-sm text-teal-600 mt-2">Read more →</p>
               </div>
             </Link>
           ))}
         </div>
       </section>
 
-      {/* ============== ACTION CARDS ============== */}
-      <section className="mx-auto max-w-6xl px-6 pb-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* ============== ACTION CARDS (stack nicely on phones) ============== */}
+      <section className="mx-auto max-w-6xl px-4 sm:px-6 pb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           {/* Leave a review */}
           <div className="rounded-3xl border overflow-hidden">
-            <div className="relative h-44 bg-gray-100">
-              <Image src="/images/action-review.jpg" alt="Leave a review" fill className="object-cover" />
+            <div className="relative h-36 sm:h-44 bg-gray-100">
+              <Image src="/images/action-review.jpg" alt="Leave a review" fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" />
             </div>
-            <div className="p-6">
-              <h3 className="text-xl font-bold text-[#0d1a4a]">Leave a review</h3>
-              <p className="mt-2 text-gray-600">Have you completed a project recently? Let your tradesperson know how they did.</p>
-              <Link href="/review" className="mt-5 inline-flex rounded-full bg-teal-600 text-white px-5 py-3 font-semibold hover:bg-teal-700">
+            <div className="p-5">
+              <h3 className="text-lg sm:text-xl font-bold text-[#0d1a4a]">Leave a review</h3>
+              <p className="mt-2 text-gray-600 text-sm sm:text-base">
+                Have you completed a project recently? Let your tradesperson know how they did.
+              </p>
+              <Link href="/review" className="mt-4 inline-flex w-full sm:w-auto justify-center rounded-full bg-teal-600 text-white px-5 py-3 font-semibold hover:bg-teal-700">
                 Leave a review
               </Link>
             </div>
@@ -335,13 +345,15 @@ export default function Home() {
 
           {/* Tradesperson sign up */}
           <div className="rounded-3xl border overflow-hidden">
-            <div className="relative h-44 bg-gray-100">
-              <Image src="/images/action-trades.jpg" alt="Tradesperson sign up" fill className="object-cover" />
+            <div className="relative h-36 sm:h-44 bg-gray-100">
+              <Image src="/images/action-trades.jpg" alt="Tradesperson sign up" fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" />
             </div>
-            <div className="p-6">
-              <h3 className="text-xl font-bold text-[#0d1a4a]">Tradesperson sign up</h3>
-              <p className="mt-2 text-gray-600">Join a platform built for quality trades — AI-ready leads, fair pricing, real jobs.</p>
-              <Link href="/trades/join" className="mt-5 inline-flex rounded-full bg-teal-600 text-white px-5 py-3 font-semibold hover:bg-teal-700">
+            <div className="p-5">
+              <h3 className="text-lg sm:text-xl font-bold text-[#0d1a4a]">Tradesperson sign up</h3>
+              <p className="mt-2 text-gray-600 text-sm sm:text-base">
+                Join a platform built for quality trades — AI-ready leads, fair pricing, real jobs.
+              </p>
+              <Link href="/trades/join" className="mt-4 inline-flex w-full sm:w-auto justify-center rounded-full bg-teal-600 text-white px-5 py-3 font-semibold hover:bg-teal-700">
                 Join today
               </Link>
             </div>
@@ -349,13 +361,15 @@ export default function Home() {
 
           {/* Request a quote */}
           <div className="rounded-3xl border overflow-hidden">
-            <div className="relative h-44 bg-gray-100">
-              <Image src="/images/action-quote.jpg" alt="Request a quote" fill className="object-cover" />
+            <div className="relative h-36 sm:h-44 bg-gray-100">
+              <Image src="/images/action-quote.jpg" alt="Request a quote" fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" />
             </div>
-            <div className="p-6">
-              <h3 className="text-xl font-bold text-[#0d1a4a]">Request a quote</h3>
-              <p className="mt-2 text-gray-600">Tell us what you’re looking for and we’ll pass your request to approved tradespeople.</p>
-              <Link href="/quote" className="mt-5 inline-flex rounded-full bg-teal-600 text-white px-5 py-3 font-semibold hover:bg-teal-700">
+            <div className="p-5">
+              <h3 className="text-lg sm:text-xl font-bold text-[#0d1a4a]">Request a quote</h3>
+              <p className="mt-2 text-gray-600 text-sm sm:text-base">
+                Tell us what you’re looking for and we’ll pass your request to approved tradespeople.
+              </p>
+              <Link href="/quote" className="mt-4 inline-flex w-full sm:w-auto justify-center rounded-full bg-teal-600 text-white px-5 py-3 font-semibold hover:bg-teal-700">
                 Request a quote
               </Link>
             </div>
@@ -363,12 +377,14 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ============== FINAL TEAL CTA ============== */}
+      {/* ============== FINAL CTA (buttons stack on phones) ============== */}
       <section className="bg-teal-700 text-white">
-        <div className="mx-auto max-w-6xl px-6 py-14 text-center">
-          <h2 className="text-3xl font-bold">Ready to build smarter?</h2>
-          <p className="mt-2 text-white/90">Kent’s only AI-powered builder. Get your instant estimate today.</p>
-          <div className="mt-6 flex flex-wrap gap-4 justify-center">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-14 text-center">
+          <h2 className="text-2xl sm:text-3xl font-bold">Ready to build smarter?</h2>
+          <p className="mt-2 text-white/90 text-sm sm:text-base">
+            Kent’s only AI-powered builder. Get your instant estimate today.
+          </p>
+          <div className="mt-6 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
             <Link href="/quote" className="rounded-xl bg-white text-teal-700 px-6 py-3 font-semibold hover:bg-gray-100">
               Get My Instant Estimate
             </Link>
@@ -379,22 +395,24 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ============== FOOTER ============== */}
+      {/* ============== FOOTER (compact on phones) ============== */}
       <footer className="bg-[#0f1b24] text-white">
-        <div className="mx-auto max-w-6xl px-6 py-10 grid md:grid-cols-3 gap-8">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-10 grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
           <div>
             <h4 className="font-semibold">Contact</h4>
-            <p className="mt-2 text-white/80">📞 07000 000000</p>
-            <p className="text-white/80">✉️ info@tradesure.uk</p>
+            <p className="mt-2 text-white/80 text-sm">📞 07000 000000</p>
+            <p className="text-white/80 text-sm">✉️ info@tradesure.uk</p>
           </div>
           <div>
             <h4 className="font-semibold">Service Areas</h4>
-            <p className="mt-2 text-white/80">Kent • Maidstone • Canterbury • Ashford • Medway</p>
+            <p className="mt-2 text-white/80 text-sm">
+              Kent • Maidstone • Canterbury • Ashford • Medway
+            </p>
           </div>
           <div>
             <h4 className="font-semibold">Trust</h4>
-            <p className="mt-2 text-white/80">🛡 Fully insured & guaranteed</p>
-            <p className="text-white/60 mt-2">© TradeSure 2025</p>
+            <p className="mt-2 text-white/80 text-sm">🛡 Fully insured & guaranteed</p>
+            <p className="text-white/60 text-sm mt-2">© TradeSure 2025</p>
           </div>
         </div>
       </footer>
