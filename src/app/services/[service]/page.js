@@ -34,7 +34,7 @@ export default function ServicePage({ params }) {
             )}
             <div className="mt-6 flex gap-4">
               <a
-                href="/quote"
+                href={"/quote?service=" + service}
                 className="rounded-lg bg-teal-600 text-white px-5 py-3 font-semibold hover:bg-teal-700"
               >
                 Get My Instant Estimate
