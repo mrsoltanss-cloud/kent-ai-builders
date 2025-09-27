@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { locationsData } from "@/data/locationsData";
 
 export default function Home() {
   const suggestions = [
@@ -55,6 +56,16 @@ export default function Home() {
         </form>
       </section>
 
+      {/* TRUST STRIP */}
+      <section className="bg-white border-y py-6">
+        <div className="mx-auto max-w-6xl px-6 grid grid-cols-2 md:grid-cols-4 gap-4 text-center text-sm text-gray-700">
+          <div>✔ DBS Checked Teams</div>
+          <div>✔ £5m Public Liability Cover</div>
+          <div>✔ Gas Safe / NICEIC Certified</div>
+          <div>✔ 12-Month Workmanship Guarantee</div>
+        </div>
+      </section>
+
       {/* AREAS WE COVER */}
       <section className="mx-auto max-w-6xl px-6 py-14">
         <h2 className="text-2xl md:text-3xl font-bold text-center text-teal-600">
@@ -64,41 +75,69 @@ export default function Home() {
           Serving homeowners across Kent with AI-powered pricing and trusted
           trades.
         </p>
-        <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 text-center">
+        <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+          {Object.keys(locationsData).map((townKey) => {
+            const town = locationsData[townKey];
+            return (
+              <Link
+                key={townKey}
+                href={`/locations/${townKey}`}
+                className="rounded-xl border p-5 hover:border-teal-600 hover:shadow-md transition flex flex-col justify-between"
+              >
+                <h3 className="font-semibold text-lg text-teal-700">
+                  {town.name}
+                </h3>
+                {town.reviews && (
+                  <p className="text-sm text-gray-600 mt-2 italic line-clamp-3">
+                    {town.reviews[0]}
+                  </p>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* COST GUIDES PREVIEW */}
+      <section className="mx-auto max-w-6xl px-6 pb-14">
+        <h2 className="text-2xl md:text-3xl font-bold text-center text-teal-600">
+          Cost Guides & Advice
+        </h2>
+        <p className="text-center text-gray-600 mt-2">
+          Transparent pricing — know what to expect before you commit.
+        </p>
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
           <Link
-            href="/locations/maidstone"
-            className="rounded-xl border p-4 hover:border-teal-600 hover:shadow-md transition"
+            href="/guides/repointing-cost-kent"
+            className="rounded-xl border p-6 hover:shadow-md hover:border-teal-600 transition"
           >
-            Maidstone
+            <h3 className="font-semibold">How much does repointing cost?</h3>
+            <p className="text-sm text-gray-600 mt-2">
+              A breakdown of brickwork repointing costs in Kent.
+            </p>
           </Link>
           <Link
-            href="/locations/canterbury"
-            className="rounded-xl border p-4 hover:border-teal-600 hover:shadow-md transition"
+            href="/guides/loft-conversion-cost-kent"
+            className="rounded-xl border p-6 hover:shadow-md hover:border-teal-600 transition"
           >
-            Canterbury
+            <h3 className="font-semibold">Loft conversion cost explained</h3>
+            <p className="text-sm text-gray-600 mt-2">
+              Average costs and factors that affect your loft project.
+            </p>
           </Link>
           <Link
-            href="/locations/ashford"
-            className="rounded-xl border p-4 hover:border-teal-600 hover:shadow-md transition"
+            href="/guides/roof-repair-cost-kent"
+            className="rounded-xl border p-6 hover:shadow-md hover:border-teal-600 transition"
           >
-            Ashford
-          </Link>
-          <Link
-            href="/locations/dartford"
-            className="rounded-xl border p-4 hover:border-teal-600 hover:shadow-md transition"
-          >
-            Dartford
-          </Link>
-          <Link
-            href="/locations/sevenoaks"
-            className="rounded-xl border p-4 hover:border-teal-600 hover:shadow-md transition"
-          >
-            Sevenoaks
+            <h3 className="font-semibold">Roof repair pricing guide</h3>
+            <p className="text-sm text-gray-600 mt-2">
+              What Kent homeowners typically pay for roof repairs.
+            </p>
           </Link>
         </div>
       </section>
 
-      {/* CTA */}
+      {/* FINAL CTA */}
       <section className="bg-gray-100 border-t">
         <div className="mx-auto max-w-4xl px-6 py-12 text-center">
           <h2 className="text-2xl md:text-3xl font-bold">
