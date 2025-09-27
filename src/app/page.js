@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -30,7 +30,7 @@ export default function Home() {
     router.push(`/quote?query=${encodeURIComponent(q)}`);
   }
 
-  // ----------------- Services carousel (like screenshots) -----------------
+  // ----------------- Services carousel -----------------
   const services = [
     { name: "Plumber", icon: "🚰" },
     { name: "Electrician", icon: "⚡" },
@@ -52,7 +52,6 @@ export default function Home() {
     { name: "Tree Surgeon", icon: "🌳" },
   ];
 
-  // responsive items-per-view
   const [perView, setPerView] = useState(6);
   useEffect(() => {
     const calc = () => {
@@ -67,13 +66,11 @@ export default function Home() {
     window.addEventListener("resize", calc);
     return () => window.removeEventListener("resize", calc);
   }, []);
-
   const totalPages = useMemo(() => Math.max(1, Math.ceil(services.length / perView)), [services.length, perView]);
   const [page, setPage] = useState(0);
   useEffect(() => {
     if (page > totalPages - 1) setPage(totalPages - 1);
   }, [totalPages, page]);
-
   const percentPerPage = useMemo(() => 100 / totalPages, [totalPages]);
   const prevPage = () => setPage((p) => Math.max(0, p - 1));
   const nextPage = () => setPage((p) => Math.min(totalPages - 1, p + 1));
@@ -87,7 +84,6 @@ export default function Home() {
     { text: "“Fair price, tidy team, and kept us informed daily.”", name: "Amelia, Tonbridge" },
     { text: "“Emergency leak sorted within hours. Brilliant.”", name: "Tom, Sevenoaks" },
   ];
-
   const [tPerView, setTPerView] = useState(3);
   useEffect(() => {
     const calc = () => {
@@ -100,24 +96,17 @@ export default function Home() {
     window.addEventListener("resize", calc);
     return () => window.removeEventListener("resize", calc);
   }, []);
-
   const tPages = useMemo(() => Math.max(1, Math.ceil(testimonials.length / tPerView)), [testimonials.length, tPerView]);
   const [tPage, setTPage] = useState(0);
   useEffect(() => {
     if (tPage > tPages - 1) setTPage(tPages - 1);
   }, [tPages, tPage]);
-
-  // autoplay
   useEffect(() => {
-    const id = setInterval(() => {
-      setTPage((p) => (p + 1) % tPages);
-    }, 4500);
+    const id = setInterval(() => setTPage((p) => (p + 1) % tPages), 4500);
     return () => clearInterval(id);
   }, [tPages]);
-
   const tPercentPerPage = useMemo(() => 100 / tPages, [tPages]);
 
-  // ----------------- Page -----------------
   return (
     <main className="min-h-screen bg-white text-gray-900">
       {/* HERO */}
@@ -160,7 +149,7 @@ export default function Home() {
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/quote"
-              className="rounded-xl px-6 py-3 font-semibold bg-orange-500 text-white hover:bg-orange-600"
+              className="rounded-xl px-6 py-3 font-semibold bg-teal-500 text-white hover:bg-teal-600"
             >
               Get My Instant Estimate
             </Link>
@@ -215,7 +204,6 @@ export default function Home() {
           <h2 className="text-3xl font-bold text-center text-[#0b0c4e]">Browse our most popular categories</h2>
 
           <div className="relative mt-10">
-            {/* Arrows */}
             <button
               aria-label="Previous"
               onClick={prevPage}
@@ -231,7 +219,6 @@ export default function Home() {
               ›
             </button>
 
-            {/* Track */}
             <div className="overflow-hidden">
               <div
                 className="flex transition-transform duration-500 ease-out"
@@ -251,7 +238,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Dots */}
             <div className="mt-6 flex items-center justify-center gap-2">
               {Array.from({ length: totalPages }).map((_, i) => (
                 <button
@@ -266,15 +252,26 @@ export default function Home() {
         </div>
       </section>
 
-      {/* WHY TRUST US — richer */}
+      {/* WHY TRUST US — now with photo collage + safety markers */}
       <section className="bg-gray-900 text-white py-16">
         <div className="mx-auto max-w-6xl px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <img
-            src="https://images.unsplash.com/photo-1600607687920-4ce9ce9c8d49?auto=format&fit=crop&w=1200&q=80"
-            alt="Builder handshake"
-            className="rounded-2xl shadow-lg w-full h-72 md:h-96 object-cover"
-            loading="lazy"
-          />
+          {/* Collage */}
+          <div className="grid grid-cols-2 gap-4">
+            <img
+              src="https://images.unsplash.com/photo-1600607687920-4ce9ce9c8d49?auto=format&fit=crop&w=800&q=80"
+              alt="Builder handshake"
+              className="rounded-2xl shadow-lg w-full h-56 md:h-80 object-cover"
+              loading="lazy"
+            />
+            <img
+              src="https://images.unsplash.com/photo-1581091014527-3d4a5b4a0f2b?auto=format&fit=crop&w=800&q=80"
+              alt="Team on site"
+              className="rounded-2xl shadow-lg w-full h-56 md:h-80 object-cover"
+              loading="lazy"
+            />
+          </div>
+
+          {/* Content */}
           <div>
             <h2 className="text-3xl font-bold">Why homeowners trust us</h2>
             <ul className="mt-6 space-y-3 text-lg">
@@ -298,12 +295,17 @@ export default function Home() {
               ))}
             </div>
 
-            {/* Logos */}
-            <div className="mt-8 flex flex-wrap items-center gap-6 opacity-80">
-              <div className="rounded-lg bg-white/10 px-3 py-2 text-sm">TrustMark</div>
-              <div className="rounded-lg bg-white/10 px-3 py-2 text-sm">FMB</div>
-              <div className="rounded-lg bg-white/10 px-3 py-2 text-sm">SafeContractor</div>
-              <div className="rounded-lg bg-white/10 px-3 py-2 text-sm">Checkatrade style</div>
+            {/* Safety markers (no brand logos) */}
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              {[
+                "DBS-checked teams",
+                "£5m Public Liability",
+                "NICEIC / Gas Safe where required",
+                "CSCS qualified",
+                "12-month workmanship guarantee",
+              ].map((b, i) => (
+                <span key={i} className="rounded-full bg-white/10 px-3 py-2 text-sm">{b}</span>
+              ))}
             </div>
 
             <Link
@@ -320,7 +322,6 @@ export default function Home() {
       <section className="mx-auto max-w-6xl px-6 py-16">
         <h2 className="text-3xl font-bold text-center text-teal-600">What our customers say</h2>
         <div className="relative mt-10">
-          {/* Track */}
           <div className="overflow-hidden">
             <div
               className="flex transition-transform duration-600 ease-out"
@@ -338,7 +339,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Controls */}
           <div className="mt-6 flex items-center justify-center gap-2">
             {Array.from({ length: tPages }).map((_, i) => (
               <button
@@ -387,11 +387,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ACTION CARDS — improved photos */}
+      {/* ACTION CARDS — teal buttons + reliable photos */}
       <section className="bg-white">
         <div className="mx-auto max-w-6xl px-6 py-16">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Leave a review */}
             <div className="rounded-3xl bg-white shadow border overflow-hidden">
               <img
                 src="https://images.unsplash.com/photo-1581093588401-16ec097d4b86?auto=format&fit=crop&w=1200&q=80"
@@ -403,14 +402,13 @@ export default function Home() {
                 <p className="mt-3 text-gray-600">Have you completed a project recently? Let your tradesperson know how they did.</p>
                 <a
                   href="#"
-                  className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-red-500 text-white font-semibold py-3 hover:bg-red-600"
+                  className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-teal-500 text-white font-semibold py-3 hover:bg-teal-600"
                 >
                   Leave a review
                 </a>
               </div>
             </div>
 
-            {/* Tradesperson sign up */}
             <div className="rounded-3xl bg-white shadow border overflow-hidden">
               <img
                 src="https://images.unsplash.com/photo-1604145559206-e3bce0040e8d?auto=format&fit=crop&w=1200&q=80"
@@ -422,14 +420,13 @@ export default function Home() {
                 <p className="mt-3 text-gray-600">Over 1 million homeowners visit our site looking for approved and quality tradespeople like you.</p>
                 <a
                   href="#"
-                  className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-red-500 text-white font-semibold py-3 hover:bg-red-600"
+                  className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-teal-500 text-white font-semibold py-3 hover:bg-teal-600"
                 >
                   Join today
                 </a>
               </div>
             </div>
 
-            {/* Request a quote */}
             <div className="rounded-3xl bg-white shadow border overflow-hidden">
               <img
                 src="https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80"
@@ -441,7 +438,7 @@ export default function Home() {
                 <p className="mt-3 text-gray-600">Tell us what you’re looking for and we’ll pass your request on to approved tradespeople.</p>
                 <Link
                   href="/quote"
-                  className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-red-500 text-white font-semibold py-3 hover:bg-red-600"
+                  className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-teal-500 text-white font-semibold py-3 hover:bg-teal-600"
                 >
                   Request a quote
                 </Link>
@@ -451,15 +448,15 @@ export default function Home() {
         </div>
       </section>
 
-      {/* FINAL CTA */}
-      <section className="bg-orange-500 text-white text-center py-16">
+      {/* FINAL CTA — teal */}
+      <section className="bg-teal-600 text-white text-center py-16">
         <h2 className="text-3xl font-bold">Ready to build smarter?</h2>
         <p className="mt-4 text-lg">Kent’s only AI-powered builder. Get your instant estimate today.</p>
         <div className="mt-8 flex gap-4 justify-center">
-          <Link href="/quote" className="rounded-xl px-6 py-3 font-semibold bg-white text-orange-600 hover:bg-gray-100">
+          <Link href="/quote" className="rounded-xl px-6 py-3 font-semibold bg-white text-teal-700 hover:bg-gray-100">
             Get My Instant Estimate
           </Link>
-          <a href="https://wa.me/447000000000" className="rounded-xl px-6 py-3 font-semibold border border-white text-white hover:bg-orange-600">
+          <a href="https://wa.me/447000000000" className="rounded-xl px-6 py-3 font-semibold border border-white text-white hover:bg-teal-700">
             Talk on WhatsApp
           </a>
         </div>
