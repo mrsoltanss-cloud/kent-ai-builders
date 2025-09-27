@@ -32,16 +32,22 @@ export default function Home() {
 
   // ----------------- Services carousel (like screenshots) -----------------
   const services = [
+    { name: "Plumber", icon: "🚰" },
+    { name: "Electrician", icon: "⚡" },
+    { name: "Roofer", icon: "🏠" },
+    { name: "Builder", icon: "👷" },
+    { name: "Gardener", icon: "🪴" },
+    { name: "Painter / Decorator", icon: "🖌️" },
     { name: "Handyman", icon: "🧰" },
     { name: "Locksmith", icon: "🔑" },
     { name: "Bathrooms", icon: "🛁" },
     { name: "Tiler - Tiling", icon: "🧱" },
     { name: "Central Heating", icon: "🌡️" },
-    { name: "Gas Boiler Servicing / Repair", icon: "🔥" },
+    { name: "Gas Boiler Service", icon: "🔥" },
     { name: "Landscaper", icon: "⛰️" },
     { name: "Carpenter", icon: "🪚" },
     { name: "Plasterer", icon: "🛠️" },
-    { name: "Driveways / Patios / Paths", icon: "🛤️" },
+    { name: "Driveways / Patios", icon: "🛤️" },
     { name: "Fencing / Gates", icon: "🚧" },
     { name: "Tree Surgeon", icon: "🌳" },
   ];
@@ -65,15 +71,51 @@ export default function Home() {
   const totalPages = useMemo(() => Math.max(1, Math.ceil(services.length / perView)), [services.length, perView]);
   const [page, setPage] = useState(0);
   useEffect(() => {
-    // snap back if resizing reduced pages
     if (page > totalPages - 1) setPage(totalPages - 1);
   }, [totalPages, page]);
 
-  const trackRef = useRef(null);
   const percentPerPage = useMemo(() => 100 / totalPages, [totalPages]);
-
   const prevPage = () => setPage((p) => Math.max(0, p - 1));
   const nextPage = () => setPage((p) => Math.min(totalPages - 1, p + 1));
+
+  // ----------------- Testimonials slider (auto) -----------------
+  const testimonials = [
+    { text: "“Great job repointing our wall — instant estimate was spot on.”", name: "Sarah, Maidstone" },
+    { text: "“Roof valley fixed in a day. Loved the online quote.”", name: "James, Canterbury" },
+    { text: "“Clear pricing, fast service. Highly recommend.”", name: "Helen, Ashford" },
+    { text: "“They handled the extension from start to finish. Stress-free.”", name: "Mark, Medway" },
+    { text: "“Fair price, tidy team, and kept us informed daily.”", name: "Amelia, Tonbridge" },
+    { text: "“Emergency leak sorted within hours. Brilliant.”", name: "Tom, Sevenoaks" },
+  ];
+
+  const [tPerView, setTPerView] = useState(3);
+  useEffect(() => {
+    const calc = () => {
+      const w = window.innerWidth;
+      if (w >= 1024) setTPerView(3);
+      else if (w >= 640) setTPerView(2);
+      else setTPerView(1);
+    };
+    calc();
+    window.addEventListener("resize", calc);
+    return () => window.removeEventListener("resize", calc);
+  }, []);
+
+  const tPages = useMemo(() => Math.max(1, Math.ceil(testimonials.length / tPerView)), [testimonials.length, tPerView]);
+  const [tPage, setTPage] = useState(0);
+  useEffect(() => {
+    if (tPage > tPages - 1) setTPage(tPages - 1);
+  }, [tPages, tPage]);
+
+  // autoplay
+  useEffect(() => {
+    const id = setInterval(() => {
+      setTPage((p) => (p + 1) % tPages);
+    }, 4500);
+    return () => clearInterval(id);
+  }, [tPages]);
+
+  const tPercentPerPage = useMemo(() => 100 / tPages, [tPages]);
 
   // ----------------- Page -----------------
   return (
@@ -167,10 +209,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SERVICES CAROUSEL (like your screenshots, NO PRICES) */}
+      {/* SERVICES CAROUSEL */}
       <section className="bg-gray-50 border-y">
         <div className="mx-auto max-w-6xl px-6 py-16">
-          <h2 className="text-3xl font-bold text-center text-gray-900">Browse our most popular categories</h2>
+          <h2 className="text-3xl font-bold text-center text-[#0b0c4e]">Browse our most popular categories</h2>
 
           <div className="relative mt-10">
             {/* Arrows */}
@@ -192,16 +234,11 @@ export default function Home() {
             {/* Track */}
             <div className="overflow-hidden">
               <div
-                ref={trackRef}
                 className="flex transition-transform duration-500 ease-out"
                 style={{ transform: `translateX(-${page * percentPerPage}%)`, width: `${100 * totalPages}%` }}
               >
                 {services.map((s, i) => (
-                  <div
-                    key={i}
-                    className="px-2"
-                    style={{ width: `${100 / (perView * totalPages)}%` }}
-                  >
+                  <div key={i} className="px-2" style={{ width: `${100 / (perView * totalPages)}%` }}>
                     <Link
                       href={`/quote?service=${encodeURIComponent(s.name.toLowerCase())}`}
                       className="block rounded-3xl bg-white border border-gray-200 p-6 text-center hover:shadow-md hover:border-teal-500 transition h-full"
@@ -221,7 +258,7 @@ export default function Home() {
                   key={i}
                   onClick={() => setPage(i)}
                   aria-label={`Go to slide ${i + 1}`}
-                  className={`h-2.5 w-2.5 rounded-full ${i === page ? "bg-gray-500" : "bg-gray-300"}`}
+                  className={`h-2.5 w-2.5 rounded-full ${i === page ? "bg-gray-600" : "bg-gray-300"}`}
                 />
               ))}
             </div>
@@ -229,16 +266,16 @@ export default function Home() {
         </div>
       </section>
 
-      {/* WHY TRUST US (with working image) */}
+      {/* WHY TRUST US — richer */}
       <section className="bg-gray-900 text-white py-16">
-        <div className="mx-auto max-w-6xl px-6 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+        <div className="mx-auto max-w-6xl px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <img
             src="https://images.unsplash.com/photo-1600607687920-4ce9ce9c8d49?auto=format&fit=crop&w=1200&q=80"
             alt="Builder handshake"
             className="rounded-2xl shadow-lg w-full h-72 md:h-96 object-cover"
             loading="lazy"
           />
-        <div>
+          <div>
             <h2 className="text-3xl font-bold">Why homeowners trust us</h2>
             <ul className="mt-6 space-y-3 text-lg">
               <li>🤖 Instant, fair AI-powered pricing</li>
@@ -246,25 +283,87 @@ export default function Home() {
               <li>🛡️ Fully insured & guaranteed work</li>
               <li>🚀 Fast response + free survey</li>
             </ul>
+
+            {/* Stats row */}
+            <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[
+                { k: "2,300+", v: "Projects completed" },
+                { k: "4.9/5", v: "Average rating" },
+                { k: "10+ yrs", v: "Experience" },
+              ].map((s, i) => (
+                <div key={i} className="rounded-xl bg-white/10 p-4 text-center">
+                  <div className="text-2xl font-extrabold text-teal-300">{s.k}</div>
+                  <div className="text-sm text-gray-300">{s.v}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Logos */}
+            <div className="mt-8 flex flex-wrap items-center gap-6 opacity-80">
+              <div className="rounded-lg bg-white/10 px-3 py-2 text-sm">TrustMark</div>
+              <div className="rounded-lg bg-white/10 px-3 py-2 text-sm">FMB</div>
+              <div className="rounded-lg bg-white/10 px-3 py-2 text-sm">SafeContractor</div>
+              <div className="rounded-lg bg-white/10 px-3 py-2 text-sm">Checkatrade style</div>
+            </div>
+
+            <Link
+              href="/quote"
+              className="mt-8 inline-flex items-center justify-center rounded-xl bg-teal-500 px-5 py-3 font-semibold text-white hover:bg-teal-600"
+            >
+              Get your instant estimate →
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* REVIEWS */}
+      {/* TESTIMONIALS — auto slider */}
       <section className="mx-auto max-w-6xl px-6 py-16">
         <h2 className="text-3xl font-bold text-center text-teal-600">What our customers say</h2>
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
-          {[
-            { text: "“Great job repointing our wall — instant estimate was spot on.”", name: "Sarah, Maidstone" },
-            { text: "“Roof valley fixed in a day. Loved the online quote.”", name: "James, Canterbury" },
-            { text: "“Clear pricing, fast service. Highly recommend.”", name: "Helen, Ashford" },
-          ].map((t, i) => (
-            <div key={i} className="rounded-2xl border p-6 hover:border-teal-500 bg-gray-50">
-              <div className="text-yellow-500">★★★★★</div>
-              <p className="mt-4 text-gray-700">{t.text}</p>
-              <p className="mt-2 text-sm text-gray-500">{t.name}</p>
+        <div className="relative mt-10">
+          {/* Track */}
+          <div className="overflow-hidden">
+            <div
+              className="flex transition-transform duration-600 ease-out"
+              style={{ transform: `translateX(-${tPage * tPercentPerPage}%)`, width: `${100 * tPages}%` }}
+            >
+              {testimonials.map((t, i) => (
+                <div key={i} className="px-2" style={{ width: `${100 / (tPerView * tPages)}%` }}>
+                  <div className="h-full rounded-2xl border p-6 bg-gray-50 hover:border-teal-500">
+                    <div className="text-yellow-500">★★★★★</div>
+                    <p className="mt-4 text-gray-700">{t.text}</p>
+                    <p className="mt-2 text-sm text-gray-500">{t.name}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
+
+          {/* Controls */}
+          <div className="mt-6 flex items-center justify-center gap-2">
+            {Array.from({ length: tPages }).map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setTPage(i)}
+                aria-label={`Go to review ${i + 1}`}
+                className={`h-2.5 w-2.5 rounded-full ${i === tPage ? "bg-gray-600" : "bg-gray-300"}`}
+              />
+            ))}
+          </div>
+
+          <div className="mt-4 flex justify-center gap-4">
+            <button
+              onClick={() => setTPage((p) => (p - 1 + tPages) % tPages)}
+              className="rounded-xl border bg-white px-3 py-2 shadow hover:border-teal-500"
+            >
+              ‹ Prev
+            </button>
+            <button
+              onClick={() => setTPage((p) => (p + 1) % tPages)}
+              className="rounded-xl border bg-white px-3 py-2 shadow hover:border-teal-500"
+            >
+              Next ›
+            </button>
+          </div>
         </div>
       </section>
 
@@ -288,14 +387,14 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ACTION CARDS (like the screenshot with photos & bold CTAs) */}
+      {/* ACTION CARDS — improved photos */}
       <section className="bg-white">
         <div className="mx-auto max-w-6xl px-6 py-16">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Leave a review */}
             <div className="rounded-3xl bg-white shadow border overflow-hidden">
               <img
-                src="https://images.unsplash.com/photo-1600486913747-55e117812d8c?auto=format&fit=crop&w=1200&q=80"
+                src="https://images.unsplash.com/photo-1581093588401-16ec097d4b86?auto=format&fit=crop&w=1200&q=80"
                 alt="Leave a review"
                 className="w-full h-48 object-cover"
               />
@@ -314,7 +413,7 @@ export default function Home() {
             {/* Tradesperson sign up */}
             <div className="rounded-3xl bg-white shadow border overflow-hidden">
               <img
-                src="https://images.unsplash.com/photo-1594322436404-5a0526db4d13?auto=format&fit=crop&w=1200&q=80"
+                src="https://images.unsplash.com/photo-1604145559206-e3bce0040e8d?auto=format&fit=crop&w=1200&q=80"
                 alt="Tradesperson sign up"
                 className="w-full h-48 object-cover"
               />
@@ -333,7 +432,7 @@ export default function Home() {
             {/* Request a quote */}
             <div className="rounded-3xl bg-white shadow border overflow-hidden">
               <img
-                src="https://images.unsplash.com/photo-1550565118-3a14e8d0389c?auto=format&fit=crop&w=1200&q=80"
+                src="https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80"
                 alt="Request a quote"
                 className="w-full h-48 object-cover"
               />
