@@ -1,68 +1,61 @@
 "use client";
-import React, { useState } from "react";
-import ProgressBar from "./ProgressBar";
+
+import { useMemo, useState } from "react";
 import Step1Basics from "./steps/Step1Basics";
 import Step2Scope from "./steps/Step2Scope";
-import Step3Budget from "./steps/Step3Budget";
-import Step4Decision from "./steps/Step4Decision";
-import Step5Contact from "./steps/Step5Contact";
-import Step6Complete from "./steps/Step6Complete";
+import Step3Contact from "./steps/Step3Contact";
+import StepFinal from "./steps/StepFinal";
 
-const steps = [
+const STEPS = [
   { id: 1, name: "Project Basics", component: Step1Basics },
   { id: 2, name: "Scope & Description", component: Step2Scope },
-  { id: 3, name: "Budget & Finance", component: Step3Budget },
-  { id: 4, name: "Decision & Ownership", component: Step4Decision },
-  { id: 5, name: "Contact & Consent", component: Step5Contact },
-  { id: 6, name: "Complete", component: Step6Complete },
+  { id: 3, name: "Contact & Budget", component: Step3Contact },
+  { id: 4, name: "Estimate", component: StepFinal },
 ];
 
 export default function QuoteForm() {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState({});
+  const [step, setStep] = useState(1);
+  const [data, setData] = useState({});
 
-  const totalSteps = steps.length;
-  const StepComponent = steps[currentStep - 1].component;
+  const CurrentStep = useMemo(
+    () => STEPS.find((s) => s.id === step)?.component,
+    [step]
+  );
 
-  function next(data) {
-    setFormData({ ...formData, ...data });
-    if (currentStep < totalSteps) {
-      if (currentStep === totalSteps - 1) {
-        // Last data collection step → submit before complete screen
-        handleSubmit({ ...formData, ...data });
-      }
-      setCurrentStep(currentStep + 1);
-    }
+  const progress = Math.round((step / STEPS.length) * 100);
+
+  function next(values) {
+    setData((prev) => ({ ...prev, ...values }));
+    setStep((s) => Math.min(s + 1, STEPS.length));
   }
 
   function back() {
-    if (currentStep > 1 && currentStep < totalSteps) {
-      setCurrentStep(currentStep - 1);
-    }
-  }
-
-  async function handleSubmit(data) {
-    try {
-      await fetch("/api/lead", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      console.log("Submitted:", data);
-    } catch (err) {
-      console.error("Submit error", err);
-    }
+    setStep((s) => Math.max(s - 1, 1));
   }
 
   return (
-    <div className="max-w-2xl mx-auto bg-white shadow-md rounded-xl overflow-hidden">
-      <ProgressBar
-        currentStep={currentStep}
-        totalSteps={totalSteps}
-        section={steps[currentStep - 1].name}
-      />
-      <div className="p-6">
-        <StepComponent next={next} back={back} data={formData} />
+    <div className="max-w-3xl mx-auto px-4 py-8">
+      {/* Progress bar */}
+      <div className="mb-4">
+        <div className="flex justify-between items-center mb-2">
+          <h1 className="text-2xl font-bold">Get Your Quote</h1>
+          <span className="text-sm text-gray-600">{progress}%</span>
+        </div>
+        <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            className="h-2 bg-teal-600 transition-all"
+            style={{ width: `${progress}%` }}
+            aria-hidden="true"
+          />
+        </div>
+        <p className="text-sm text-gray-500 mt-2">
+          Step {step} of {STEPS.length} — {STEPS[step - 1].name}
+        </p>
+      </div>
+
+      {/* Step content */}
+      <div className="mt-4">
+        {CurrentStep && <CurrentStep next={next} back={back} data={data} />}
       </div>
     </div>
   );
