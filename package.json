@@ -4,23 +4,25 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run build:css && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "build:css": "tailwindcss -c tailwind.config.js -i ./src/styles/tw-input.css -o ./public/tw.css -m"
   },
   "dependencies": {
-    "autoprefixer": "^10.4.21",
     "next": "^15.5.4",
-    "postcss": "^8.5.6",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@tailwindcss/postcss": "^4",
+    "@tailwindcss/postcss": "^4.1.13",
+    "autoprefixer": "^10.4.20",
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
+    "json": "^11.0.0",
     "next-sitemap": "^4.2.3",
-    "tailwindcss": "^4.1.13"
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.4.14"
   }
 }
