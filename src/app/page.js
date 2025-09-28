@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 export default function Home() {
-  // rotating search suggestions
   const suggestions = ["Leaky roof","Wall needs repointing","Kitchen renovation","Emergency plumber"];
   const [sIndex, setSIndex] = useState(0);
   useEffect(() => {
@@ -13,7 +12,6 @@ export default function Home() {
     return () => clearInterval(id);
   }, []);
 
-  // light auto-rotating reviews
   const reviews = [
     { quote: "They handled the extension from start to finish. Stress-free.", name: "Mark, Medway" },
     { quote: "Fair price, tidy team, and kept us informed daily.", name: "Amelia, Tonbridge" },
@@ -25,7 +23,6 @@ export default function Home() {
     return () => clearInterval(id);
   }, []);
 
-  // categories scroller
   const cats = [
     { key: "plumbing", label: "Plumber", emoji: "🚰" },
     { key: "electrical", label: "Electrician", emoji: "⚡" },
@@ -66,7 +63,6 @@ export default function Home() {
 
       {/* HERO */}
       <section className="relative overflow-hidden">
-        {/* background image */}
         <div className="absolute inset-0 z-0">
           <Image
             src="/images/hero-kitchen.jpg"
@@ -77,9 +73,7 @@ export default function Home() {
             className="object-cover"
           />
         </div>
-        {/* dark overlay */}
         <div className="absolute inset-0 z-10 bg-black/55" />
-        {/* content */}
         <div className="relative z-20 mx-auto max-w-6xl px-4 sm:px-6 pt-12 sm:pt-16 md:pt-20 pb-10 sm:pb-14 md:pb-24 text-center md:text-left">
           <h1 className="text-white font-extrabold leading-tight text-3xl sm:text-4xl md:text-6xl">
             Build Smarter. Faster. Fairer.
@@ -89,8 +83,6 @@ export default function Home() {
           <p className="mt-3 sm:mt-4 text-white/90 text-sm sm:text-base md:text-lg">
             Instant quotes • Verified builders • Guaranteed work
           </p>
-
-          {/* search form */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -121,7 +113,6 @@ export default function Home() {
             </p>
           </form>
 
-          {/* quick CTAs */}
           <div className="mt-5 sm:mt-6 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center md:justify-start">
             <Link href="/quote" className="w-full sm:w-auto text-center rounded-xl bg-teal-600 text-white px-5 py-3 font-semibold hover:bg-teal-700">
               Get My Instant Estimate
@@ -155,7 +146,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* POPULAR CATEGORIES */}
+      {/* CATEGORIES */}
       <section className="bg-white border-y">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10 sm:py-12">
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-center">Browse our most popular categories</h2>
