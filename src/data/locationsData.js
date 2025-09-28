@@ -1,7 +1,7 @@
 export const locationsData = {
   maidstone: {
     name: "Maidstone",
-    intro: "TradeSure provides trusted builders in Maidstone and the surrounding areas. From extensions to roof repairs, our team has been serving Maidstone homeowners for over 20 years.",
+    intro: "Brixel provides trusted builders in Maidstone and the surrounding areas. From extensions to roof repairs, our team has been serving Maidstone homeowners for over 20 years.",
     image: "/images/locations/maidstone.jpg",
     topServices: ["roofing", "repointing", "extensions"],
     reviews: [

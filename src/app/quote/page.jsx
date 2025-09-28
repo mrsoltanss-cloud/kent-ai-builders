@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic"; // avoid prerender errors for searchPara
 export const revalidate = 0;
 
 export const metadata = {
-  title: "Instant Estimate | TradeSure",
+  title: "Instant Estimate | Brixel",
   description: "Get an instant, AI-powered estimate and book a free survey.",
 };
 

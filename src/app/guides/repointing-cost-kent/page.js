@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Repointing Cost in Kent (2025 Guide) | TradeSure",
+  title: "Repointing Cost in Kent (2025 Guide) | Brixel",
   description: "Full breakdown of brick repointing costs in Kent. Prices per m², factors affecting cost, and how AI estimates give you a fair price instantly.",
 };
 
