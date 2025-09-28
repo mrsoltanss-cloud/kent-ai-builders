@@ -2,11 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* small tokens */
 :root {
-  --brand: #0ea5a4; /* teal-600 */
-  --brand-dark: #0b807f; /* teal-700 */
-  --ink: #0f172a; /* slate-900 */
+  --brand: #0ea5a4;       /* teal-600 */
+  --brand-dark: #0b807f;  /* teal-700 */
+  --ink: #0f172a;         /* slate-900 */
 }
 html, body { height: 100%; }
-body { color: #0f172a; background: #ffffff; }
+body { color: var(--ink); background: #ffffff; }
