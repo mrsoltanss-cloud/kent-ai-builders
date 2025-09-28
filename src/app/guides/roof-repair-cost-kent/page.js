@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Roof Repair Cost in Kent (2025 Guide) | TradeSure",
+  title: "Roof Repair Cost in Kent (2025 Guide) | Brixel",
   description: "Full breakdown of roof repair costs in Kent. Leak fixes, valley lead replacement, and new tiles explained with average pricing.",
 };
 

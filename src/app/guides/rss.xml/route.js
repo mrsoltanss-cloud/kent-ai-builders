@@ -40,7 +40,7 @@ export async function GET() {
   const xml = `<?xml version="1.0" encoding="UTF-8" ?>
   <rss version="2.0">
     <channel>
-      <title><![CDATA[TradeSure Guides]]></title>
+      <title><![CDATA[Brixel Guides]]></title>
       <link>${SITE}/guides</link>
       <description><![CDATA[Cost guides & advice for Kent homeowners]]></description>
       <language>en-gb</language>

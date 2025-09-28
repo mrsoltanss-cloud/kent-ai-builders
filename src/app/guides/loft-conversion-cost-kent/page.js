@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Loft Conversion Cost in Kent (2025 Guide) | TradeSure",
+  title: "Loft Conversion Cost in Kent (2025 Guide) | Brixel",
   description: "Average loft conversion costs in Kent for dormer, hip-to-gable, and mansard conversions. 2025 guide with pricing breakdown.",
 };
 
