@@ -1,7 +1,15 @@
 "use client";
 import Link from "next/link";
+import { useEffect } from "react";
 
 export default function Step6Complete({ data }) {
+  // Debug: log submitted data in dev console only
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production") {
+      console.log("✅ Submitted form data:", data);
+    }
+  }, [data]);
+
   return (
     <div className="text-center py-10">
       <div className="mx-auto mb-6 w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
@@ -28,11 +36,17 @@ export default function Step6Complete({ data }) {
         </Link>
       </div>
 
-      <div className="mt-8 text-sm text-gray-500">
-        Confirmation sent to: <br />
-        {data.phone && <div>📱 {data.phone}</div>}
-        {data.email && <div>📧 {data.email}</div>}
-      </div>
+      {/* Debug view (only in dev, never in production) */}
+      {process.env.NODE_ENV !== "production" && (
+        <div className="mt-10 text-left max-w-lg mx-auto bg-gray-50 p-4 rounded border border-gray-200">
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">
+            Debug: Submitted Data
+          </h3>
+          <pre className="text-xs text-gray-600 whitespace-pre-wrap">
+            {JSON.stringify(data, null, 2)}
+          </pre>
+        </div>
+      )}
     </div>
   );
 }
