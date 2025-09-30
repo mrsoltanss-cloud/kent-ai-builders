@@ -7,7 +7,9 @@
     "build": "npm run build:css && next build",
     "start": "next start",
     "lint": "eslint",
-    "build:css": "tailwindcss -c tailwind.config.js -i ./src/styles/tw-input.css -o ./public/tw.css -m"
+    "build:css": "tailwindcss -c tailwind.config.js -i ./src/styles/tw-input.css -o ./public/tw.css -m",
+    "postinstall": "prisma generate",
+    "vercel-build": "prisma generate && next build"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
@@ -22,7 +24,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@prisma/client": "^5.20.0",
+    "@prisma/client": "^5.22.0",
     "@tailwindcss/postcss": "^4.1.13",
     "@types/node": "^24.6.0",
     "@types/react": "^19.1.16",
@@ -33,7 +35,7 @@
     "json": "^11.0.0",
     "next-sitemap": "^4.2.3",
     "postcss": "^8.4.31",
-    "prisma": "^5.20.0",
+    "prisma": "^5.22.0",
     "tailwindcss": "^3.4.14",
     "typescript": "^5.9.2"
   }
