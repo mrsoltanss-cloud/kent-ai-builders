@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import HeaderActions from "@/components/HeaderActions";
 
 export default function Home() {
   const suggestions = ["Leaky roof","Wall needs repointing","Kitchen renovation","Emergency plumber"];
@@ -41,25 +42,25 @@ export default function Home() {
     <main className="min-h-screen bg-white text-slate-900">
       {/* HEADER */}
       <header className="sticky top-0 z-40 w-full border-b bg-white/90 backdrop-blur">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-teal-600 text-white text-xs font-bold">✓</span>
-            <span className="font-bold text-sm sm:text-base">Brixel</span>
-          </div>
-          <nav className="hidden md:flex items-center gap-6 text-sm">
-            <Link href="/" className="hover:text-teal-700">Homeowner</Link>
-            <Link href="/trades/join" className="hover:text-teal-700">Trades</Link>
-          </nav>
-          <div className="flex items-center gap-2">
-            <Link href="/trades/join" className="hidden sm:inline-flex rounded-full border px-3 py-1.5 text-sm hover:bg-gray-50">
-              Trade sign up
-            </Link>
-            <Link href="/login" className="rounded-full bg-teal-600 text-white px-3 py-1.5 text-sm hover:bg-teal-700">
-              Log in
-            </Link>
-          </div>
-        </div>
-      </header>
+  <div className="mx-auto max-w-6xl px-4 h-16 flex items-center justify-between">
+    {/* Left: brand / logo */}
+    <div className="flex items-center gap-2">
+      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white text-xs font-bold">✓</span>
+      <Link href="/" className="font-semibold text-base">Brixel</Link>
+    </div>
+
+    {/* Middle: nav */}
+    <nav className="hidden md:flex items-center gap-8 text-[15px]">
+      <Link href="/#homeowner" className="hover:opacity-80">Homeowner</Link>
+      <Link href="/#trades" className="hover:opacity-80">Trades</Link>
+    </nav>
+
+    {/* Right: actions */}
+    <HeaderActions />
+  </div>
+</header>
+
+
 
       {/* HERO */}
       <section className="relative overflow-hidden">
