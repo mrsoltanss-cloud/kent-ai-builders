@@ -1,35 +1,36 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
-import { db } from "@/server/db";
-import { hashPassword } from "@/lib/auth/password";
+import { PrismaClient, Role } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
-const Schema = z.object({
-  name: z.string().min(1).max(100),
-  email: z.string().email(),
-  password: z.string().min(8).max(200),
-});
+const db = new PrismaClient();
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { name, email, password } = Schema.parse(body);
+    const { name, email, password } = await req.json();
+
+    if (!email || !password) {
+      return NextResponse.json({ ok: false, error: "Email and password are required" }, { status: 400 });
+    }
 
     const existing = await db.user.findUnique({ where: { email } });
     if (existing) {
-      return NextResponse.json({ error: "Email already in use" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "Email already in use" }, { status: 409 });
     }
 
-    const passwordHash = await hashPassword(password);
+    const hashed = await bcrypt.hash(String(password), 10);
 
-    // Default role for new signups; adjust if you have enums
     const user = await db.user.create({
-      data: { name, email, passwordHash, role: "HOMEOWNER" },
+      data: {
+        name: name ?? null,
+        email: String(email).toLowerCase().trim(),
+        password: hashed,            // ✅ store in `password` (mapped)
+        role: Role.HOMEOWNER,        // default role
+      },
       select: { id: true, email: true, name: true },
     });
 
-    return NextResponse.json({ ok: true, user });
-  } catch (e: any) {
-    const msg = e?.message || "Invalid request";
-    return NextResponse.json({ error: msg }, { status: 400 });
+    return NextResponse.json({ ok: true, user }, { status: 201 });
+  } catch (e) {
+    return NextResponse.json({ ok: false, error: "Invalid payload" }, { status: 400 });
   }
 }

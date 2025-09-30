@@ -1,0 +1,14 @@
+import { auth } from "@/lib/auth"; // your getServerSession wrapper
+
+export async function requireRole(roles: Array<"ADMIN"|"TRADER"|"HOMEOWNER">) {
+  const session = await auth();
+  if (!session?.user) {
+    // Let Next.js middleware redirect unauthenticated; or throw for server components
+    throw new Error("UNAUTHENTICATED");
+  }
+  const role = session.user.role || "HOMEOWNER";
+  if (!roles.includes(role)) {
+    throw new Error("FORBIDDEN");
+  }
+  return session.user;
+}

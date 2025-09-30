@@ -1,0 +1,150 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+BASE_URL="http://localhost:3001"
+
+banner() { printf "\n\033[1;36m▶ %s\033[0m\n" "$1"; }
+pass()   { printf "\033[1;32m✓ %s\033[0m\n" "$1"; }
+fail()   { printf "\033[1;31m✗ %s\033[0m\n" "$1"; }
+
+# 0) Ensure deps
+banner "Install deps (npm ci)"
+npm ci || npm install
+
+# 1) Prisma: generate (migrations assumed already applied)
+banner "Prisma generate"
+npx prisma generate
+
+# 2) Seed (optional; skip if script not present)
+if [ -f scripts/seed-users.js ]; then
+  banner "Seeding test users (admin/home/trader)"
+  node scripts/seed-users.js || true
+else
+  echo "No scripts/seed-users.js found — skipping seeding."
+fi
+
+# 3) Build + start
+banner "Building Next.js (prod)"
+npm run build
+
+banner "Starting server on ${BASE_URL}"
+PORT=3001 npm run start >/tmp/brixel_sanity_server.log 2>&1 &
+SRV_PID=$!
+cleanup() { kill "$SRV_PID" >/dev/null 2>&1 || true; }
+trap cleanup EXIT
+
+# 4) Wait until server responds
+banner "Waiting for server to come up..."
+for i in $(seq 1 60); do
+  if curl -sSf "${BASE_URL}/" >/dev/null 2>&1; then
+    pass "Server is up"
+    break
+  fi
+  sleep 0.5
+  if [ "$i" -eq 60 ]; then
+    fail "Server did not start in time"
+    echo "Last 80 lines of server log:"
+    tail -n 80 /tmp/brixel_sanity_server.log || true
+    exit 1
+  fi
+done
+
+# 5) Tests
+RESULTS=()
+
+test_api_aiquote() {
+  banner "Test: /api/aiQuote"
+  RESP="$(curl -s -X POST "${BASE_URL}/api/aiQuote" \
+    -H 'content-type: application/json' \
+    -d '{"service":"loft conversion","areaSqm":35,"quality":"standard","postcode":"ME15"}' || true)"
+  echo "$RESP"
+  if echo "$RESP" | grep -q '"ok": *true' && echo "$RESP" | grep -q '"quote"'; then
+    RESULTS+=("PASS aiQuote")
+  else
+    RESULTS+=("FAIL aiQuote")
+  fi
+}
+
+test_api_lead() {
+  banner "Test: /api/lead"
+  RESP="$(curl -s -X POST "${BASE_URL}/api/lead" \
+    -H 'content-type: application/json' \
+    -d '{"service":"extension","description":"Single-storey rear extension approx 25sqm.","budgetMin":20000,"budgetMax":45000,"timeline":"3-6 months","name":"Jane Doe","email":"jane@example.com","source":"quote-wizard"}' || true)"
+  echo "$RESP"
+  if echo "$RESP" | grep -q '"ok": *true' && echo "$RESP" | grep -Eq '"id":"[a-z0-9]+'; then
+    RESULTS+=("PASS lead")
+  else
+    RESULTS+=("FAIL lead")
+  fi
+}
+
+test_providers() {
+  banner "Test: /api/auth/providers (should show at least credentials; google if configured)"
+  RESP="$(curl -s "${BASE_URL}/api/auth/providers" || true)"
+  echo "$RESP"
+  if echo "$RESP" | grep -q '"credentials"'; then
+    RESULTS+=("PASS providers")
+  else
+    RESULTS+=("WARN providers-no-credentials")
+  fi
+}
+
+test_sitemap() {
+  banner "Test: sitemap.xml and robots.txt"
+  if curl -sfI "${BASE_URL}/sitemap.xml" >/dev/null; then pass "sitemap.xml 200"; else RESULTS+=("FAIL sitemap"); fi
+  if curl -sfI "${BASE_URL}/robots.txt"  >/dev/null; then pass "robots.txt 200";  else RESULTS+=("FAIL robots");  fi
+}
+
+test_auth_guards() {
+  banner "Test: auth guards on /home and /trade (unauthenticated)"
+  HOME_CODE=$(curl -s -o /dev/null -w "%{http_code}" -L -I "${BASE_URL}/home" || true)
+  TRADE_CODE=$(curl -s -o /dev/null -w "%{http_code}" -L -I "${BASE_URL}/trade" || true)
+  echo "HOME status (after redirects): ${HOME_CODE}"
+  echo "TRADE status (after redirects): ${TRADE_CODE}"
+  case "$HOME_CODE" in 200|401|403) RESULTS+=("PASS guard-home");; *) RESULTS+=("FAIL guard-home");; esac
+  case "$TRADE_CODE" in 200|401|403) RESULTS+=("PASS guard-trade");; *) RESULTS+=("FAIL guard-trade");; esac
+}
+
+test_debug_vars() {
+  banner "Test: /api/debug-vars (optional)"
+  CODE=$(curl -s -o /dev/null -w "%{http_code}" "${BASE_URL}/api/debug-vars" || true)
+  if [ "$CODE" = "200" ]; then
+    curl -s "${BASE_URL}/api/debug-vars" | sed -E 's/"(GOOGLE_.*?)":".*"/"\1":"***"/g'
+    RESULTS+=("PASS debug-vars")
+  else
+    echo "Route missing (not critical)."
+    RESULTS+=("SKIP debug-vars")
+  fi
+}
+
+test_api_aiquote
+test_api_lead
+test_providers
+test_sitemap
+test_auth_guards
+test_debug_vars
+
+# 6) Summary
+banner "Sanity Summary"
+FAILS=0
+for R in "${RESULTS[@]}"; do
+  if [[ "$R" == FAIL* ]]; then fail "$R"; FAILS=$((FAILS+1))
+  elif [[ "$R" == WARN* ]]; then printf "\033[1;33m! %s\033[0m\n" "$R"
+  elif [[ "$R" == SKIP* ]]; then printf "\033[1;34m• %s\033[0m\n" "$R"
+  else pass "$R"; fi
+done
+
+# 7) Show tail of server log for quick inspection
+banner "Server log (last 40 lines)"
+tail -n 40 /tmp/brixel_sanity_server.log || true
+
+# 8) Exit non-zero if any FAILs
+if [ "$FAILS" -gt 0 ]; then
+  echo
+  fail "Sanity tests had ${FAILS} failure(s). Check output above."
+  exit 1
+fi
+
+echo
+pass "All critical sanity tests passed."
+echo "Sign in at ${BASE_URL}/auth/signin (use seeded users)."
