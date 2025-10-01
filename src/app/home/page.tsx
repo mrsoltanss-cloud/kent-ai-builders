@@ -1,32 +1,62 @@
-import Link from "next/link";
-import { requireUser } from "@/lib/auth/requireUser";
+import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { authOptions } from "@/lib/auth/options";
+import { PrismaClient } from "@prisma/client";
 
-export default async function HomeDashboard() {
-  const { user } = await requireUser();
-  if (!user) redirect("/auth/signin");
+export default async function HomePage() {
+  const session = await getServerSession(authOptions);
+  if (!session) redirect("/auth/signin?callbackUrl=/home");
+
+  const email = session.user?.email || "";
+  const db = new PrismaClient();
+
+  // Select only fields guaranteed by your current schema/client
+  const leads = await db.lead.findMany({
+    where: email ? { email } : undefined,
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    select: {
+      id: true,
+      service: true,
+      postcode: true,
+      status: true,
+      createdAt: true,
+    },
+  });
+
+  await db.$disconnect();
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Welcome{user?.name ? `, ${user.name}` : ""}</h1>
+    <main className="max-w-4xl mx-auto p-6">
+      <h1 className="text-2xl font-semibold">My projects</h1>
+      <p className="text-gray-600 mt-1">Your recent quote requests.</p>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <section className="border rounded-xl p-4">
-          <h2 className="font-medium mb-2">Start a new project</h2>
-          <p className="text-sm text-gray-600 mb-3">Describe your job and get instant estimates.</p>
-          <Link href="/quote" className="inline-block rounded-md bg-emerald-600 text-white px-4 py-2 hover:bg-emerald-700">Open Quote Wizard</Link>
-        </section>
-
-        <section className="border rounded-xl p-4">
-          <h2 className="font-medium mb-2">Recent projects</h2>
-          <p className="text-sm text-gray-600">Your latest projects will appear here.</p>
-        </section>
-      </div>
-
-      <section className="border rounded-xl p-4">
-        <h2 className="font-medium mb-2">Messages</h2>
-        <p className="text-sm text-gray-600">Conversation threads with traders (coming soon).</p>
-      </section>
-    </div>
+      {leads.length === 0 ? (
+        <div className="mt-6 rounded-xl border p-6 text-gray-600">
+          No requests yet. <a className="underline" href="/quote">Start a new quotation</a>.
+        </div>
+      ) : (
+        <div className="mt-6 space-y-3">
+          {leads.map((l) => (
+            <div key={l.id} className="rounded-xl border p-4 flex items-center justify-between">
+              <div>
+                <div className="font-medium">{l.service || "Project"}</div>
+                <div className="text-sm text-gray-600">
+                  {l.postcode || "—"} • {new Date(l.createdAt).toLocaleDateString()}
+                </div>
+                <div className="text-xs text-gray-500 mt-0.5">{l.status}</div>
+              </div>
+              <a
+                href={`/quote/success?id=${l.id}`}
+                className="px-3 py-1.5 rounded-lg border hover:bg-gray-50 text-sm"
+                aria-label={`View details for ${l.service || "project"}`}
+              >
+                View
+              </a>
+            </div>
+          ))}
+        </div>
+      )}
+    </main>
   );
 }

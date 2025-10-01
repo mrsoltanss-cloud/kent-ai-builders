@@ -11,8 +11,8 @@ const LeadSchema = z.object({
   postcode: z.string().optional(),
   rooms: z.number().int().positive().optional(),
   areaSqm: z.number().positive().optional(),
-  // permissions: z.string().optional(),  // <- removed (not in DB schema)
-  urgency: z.string().optional(),          // free-form; we'll normalize to enum
+  permissions: z.string().optional(),
+  urgency: z.string().optional(),      // free-form from client; we will normalize
   budgetMin: z.number().int().nonnegative().optional(),
   budgetMax: z.number().int().nonnegative().optional(),
   timeline: z.string().optional(),
@@ -40,7 +40,7 @@ async function deliverToWebhook(lead: any) {
   return { ok: false };
 }
 
-// "within_3_months" -> Urgency.WITHIN_3_MONTHS (if valid)
+// Normalize strings like "within_3_months" -> Urgency.WITHIN_3_MONTHS (if valid)
 function toUrgency(v?: string | null): Urgency | null {
   if (!v) return null;
   const candidate = v.toUpperCase().replace(/[^A-Z0-9_]/g, "_");
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
 
   const data = parsed.data;
 
-  // Compute quote snapshot (AI or fallback)
+  // Compute a quote snapshot (fallback if no OPENAI_API_KEY)
   const q = await getQuote({
     service: data.service,
     rooms: data.rooms,
@@ -79,8 +79,8 @@ export async function POST(req: Request) {
     postcode: data.postcode ?? null,
     rooms: data.rooms ?? null,
     areaSqm: data.areaSqm ?? null,
-    // permissions: data.permissions ?? null, // <- removed (not in schema)
-    urgency: toUrgency(data.urgency),
+    permissions: data.permissions ?? null,
+    urgency: toUrgency(data.urgency),     // ✅ enum-safe
     budgetMin: data.budgetMin ?? null,
     budgetMax: data.budgetMax ?? null,
     timeline: data.timeline ?? null,
@@ -93,6 +93,7 @@ export async function POST(req: Request) {
 
   let createdId: string | null = null;
 
+  // Create; if unique-email collision, retry with email: null (helps repeated sanity runs)
   try {
     const created = await db.lead.create({ data: baseCreate });
     createdId = created.id;

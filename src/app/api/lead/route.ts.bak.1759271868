@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { PrismaClient, LeadStatus, Prisma, Urgency } from "@prisma/client";
+import { PrismaClient, LeadStatus, Prisma } from "@prisma/client";
 import { getQuote } from "@/lib/ai/quote";
 
 const db = new PrismaClient();
@@ -11,8 +11,9 @@ const LeadSchema = z.object({
   postcode: z.string().optional(),
   rooms: z.number().int().positive().optional(),
   areaSqm: z.number().positive().optional(),
-  // permissions: z.string().optional(),  // <- removed (not in DB schema)
-  urgency: z.string().optional(),          // free-form; we'll normalize to enum
+  propertyAge: z.string().optional(),
+  permissions: z.string().optional(),
+  urgency: z.string().optional(),
   budgetMin: z.number().int().nonnegative().optional(),
   budgetMax: z.number().int().nonnegative().optional(),
   timeline: z.string().optional(),
@@ -40,14 +41,6 @@ async function deliverToWebhook(lead: any) {
   return { ok: false };
 }
 
-// "within_3_months" -> Urgency.WITHIN_3_MONTHS (if valid)
-function toUrgency(v?: string | null): Urgency | null {
-  if (!v) return null;
-  const candidate = v.toUpperCase().replace(/[^A-Z0-9_]/g, "_");
-  const allowed = Object.values(Urgency) as string[];
-  return allowed.includes(candidate) ? (candidate as Urgency) : null;
-}
-
 export async function POST(req: Request) {
   const json = await req.json().catch(() => ({}));
   const parsed = LeadSchema.safeParse(json);
@@ -60,7 +53,7 @@ export async function POST(req: Request) {
 
   const data = parsed.data;
 
-  // Compute quote snapshot (AI or fallback)
+  // Compute a quote snapshot (fallback if no OPENAI_API_KEY)
   const q = await getQuote({
     service: data.service,
     rooms: data.rooms,
@@ -73,14 +66,16 @@ export async function POST(req: Request) {
   const estimateHigh = Math.round(q.high ?? 0);
   const currency = q.currency ?? "GBP";
 
+  // Compose base data (ONLY columns that exist in your DB)
   const baseCreate: Prisma.LeadCreateInput = {
     service: data.service,
     description: data.description,
     postcode: data.postcode ?? null,
     rooms: data.rooms ?? null,
     areaSqm: data.areaSqm ?? null,
-    // permissions: data.permissions ?? null, // <- removed (not in schema)
-    urgency: toUrgency(data.urgency),
+    propertyAge: data.propertyAge ?? null,
+    permissions: data.permissions ?? null,
+    urgency: data.urgency ?? null,
     budgetMin: data.budgetMin ?? null,
     budgetMax: data.budgetMax ?? null,
     timeline: data.timeline ?? null,
@@ -93,19 +88,26 @@ export async function POST(req: Request) {
 
   let createdId: string | null = null;
 
+  // Try create; if unique error on email, retry with email: null
   try {
     const created = await db.lead.create({ data: baseCreate });
     createdId = created.id;
   } catch (e: any) {
     if (e?.code === "P2002" && Array.isArray(e?.meta?.target) && e.meta.target.includes("email")) {
-      const created = await db.lead.create({ data: { ...baseCreate, email: null } });
+      // Retry with null email to bypass unique constraint on subsequent tests
+      const created = await db.lead.create({
+        data: { ...baseCreate, email: null },
+      });
       createdId = created.id;
     } else {
+      // Unknown error
       return NextResponse.json({ ok: false, error: "DB_CREATE_FAILED" }, { status: 500 });
     }
   }
 
+  // Webhook (best-effort)
   const delivery = createdId ? await deliverToWebhook({ id: createdId, ...data }) : { ok: false };
+
   if (createdId && delivery.ok) {
     await db.lead.update({
       where: { id: createdId },

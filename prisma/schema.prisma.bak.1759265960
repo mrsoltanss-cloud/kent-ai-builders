@@ -67,8 +67,7 @@ enum Urgency {
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
-  // Map to existing DB column so we DON'T drop data:
-  password  String?  @map("passwordHash")
+  password  String?  // hashed for credentials auth (null if Google-only)
   name      String?
   role      Role     @default(HOMEOWNER)
   createdAt DateTime @default(now())
@@ -83,20 +82,20 @@ model Lead {
   description String
   budgetMin   Int?
   budgetMax   Int?
-  timeline    String?      // legacy free text
+  timeline    String?      // kept for backwards compat (free text)
 
-  // New structured fields
-  areaSqm       Int?
-  rooms         Int?
-  postcode      String?
-  propertyType  PropertyType?
-  ageBand       AgeBand?
-  structuralChanges Boolean?
-  finishLevel   FinishLevel?
-  accessLevel   AccessLevel?
-  parking       Boolean?
-  planning      PlanningStatus?
-  urgency       Urgency?
+  // 🔹 New structured fields
+  areaSqm     Int?
+  rooms       Int?
+  postcode    String?
+  propertyType PropertyType?
+  ageBand     AgeBand?
+  structuralChanges Boolean?   // removing walls, new foundations/roof
+  finishLevel FinishLevel?
+  accessLevel AccessLevel?
+  parking     Boolean?
+  planning    PlanningStatus?
+  urgency     Urgency?
 
   // Uploads (store light metadata for now)
   attachmentsMeta Json?

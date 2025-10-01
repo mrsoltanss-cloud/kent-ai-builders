@@ -4,6 +4,6 @@ export const config = {
   matcher: [
     "/home/:path*",
     "/trade/:path*",
-    "/quote/:path*",        // includes /quote and /quote/success
+    "/quote/:path*",   // 👈 protect /quote
   ],
 };

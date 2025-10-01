@@ -1,8 +1,18 @@
 "use client";
+import "./_client/guest-shield";
+import { useSession } from "next-auth/react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useRouter } from "next/navigation";
+
+function hasSessionCookie() {
+  if (typeof document === "undefined") return false;
+  const c = document.cookie || "";
+  return c.includes("next-auth.session-token") || c.includes("__Secure-next-auth.session-token") || c.includes("authjs.session-token");
+}
+
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
 import HeaderActions from "@/components/HeaderActions";
 
 export default function Home() {

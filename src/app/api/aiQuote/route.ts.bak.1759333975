@@ -1,0 +1,51 @@
+// src/app/api/aiQuote/route.ts
+import { NextResponse } from "next/server";
+
+type AiQuoteReq = {
+  service?: string;
+  postcode?: string;
+  description?: string;   // preferred
+  scope?: string;         // legacy alias
+  propertyType?: string;
+  rooms?: number;
+  budgetMin?: number;
+  budgetMax?: number;
+  urgency?: "LOW" | "MEDIUM" | "HIGH";
+  timeline?: string;
+  areaSqm?: number;
+};
+
+export async function POST(req: Request) {
+  try {
+    const body = (await req.json()) as AiQuoteReq;
+    const description = body.description ?? body.scope;
+
+    if (!body.service) return NextResponse.json({ error: "service required" }, { status: 400 });
+    if (!description)   return NextResponse.json({ error: "description required" }, { status: 400 });
+
+    // Deterministic fallback estimator (no external API)
+    const base =
+      typeof body.areaSqm === "number" && body.areaSqm > 0
+        ? body.areaSqm * 1200 // £/sqm baseline
+        : typeof body.budgetMin === "number"
+        ? body.budgetMin
+        : 15000;
+
+    const mult = body.urgency === "HIGH" ? 1.1 : body.urgency === "LOW" ? 0.95 : 1.0;
+    const mid = Math.max(5000, Math.round(base * mult));
+    const spread = Math.round(Math.max(2500, mid * 0.25));
+
+    const estimateLow = Math.max(3000, mid - spread);
+    const estimateHigh = mid + spread;
+
+    return NextResponse.json({
+      estimateLow,
+      estimateHigh,
+      currency: "GBP",
+      service: body.service,
+      notes: "Rule-based fallback estimate (no AI key)",
+    });
+  } catch {
+    return NextResponse.json({ error: "bad_request" }, { status: 400 });
+  }
+}

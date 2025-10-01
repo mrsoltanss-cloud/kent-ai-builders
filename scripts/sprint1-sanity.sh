@@ -1,143 +1,128 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-BASE_URL="http://localhost:3001"
+PORT="${PORT:-3001}"
+BASE="http://localhost:$PORT"
+summary=(); fails=0
 
-banner() { printf "\n\033[1;36m▶ %s\033[0m\n" "$1"; }
-pass()   { printf "\033[1;32m✓ %s\033[0m\n" "$1"; }
-fail()   { printf "\033[1;31m✗ %s\033[0m\n" "$1"; }
+say(){ printf "\n\033[1;36m▶ %s\033[0m\n" "$*"; }
+pass(){ printf "  ✅ %s\n" "$*"; summary+=("PASS  $*"); }
+fail(){ printf "  ❌ %s\n" "$*"; summary+=("FAIL  $*"); fails=$((fails+1)); }
 
-banner "Install deps (npm ci)"
-npm ci || npm install
+# 0) Postgres (Docker)
+say "Start Postgres (Docker)"
+docker rm -f kabdb >/dev/null 2>&1 || true
+docker run -d --name kabdb -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=kab -p 5432:5432 postgres:16 >/dev/null
+pass "Postgres running on localhost:5432 (db=kab)"
 
-banner "Prisma generate"
-npx prisma generate
-
-if [ -f scripts/seed-users.js ]; then
-  banner "Seeding test users (admin/home/trader)"
-  node scripts/seed-users.js || true
-elif [ -f scripts/seed-users.ts ]; then
-  banner "Seeding test users (ts)"
-  npx ts-node scripts/seed-users.ts || true
+# 1) .env bootstrap (non-destructive if exists)
+if [[ ! -f .env ]]; then
+  say "Create .env from template"
+  if [[ -f .env.example ]]; then cp .env.example .env; fi
+  grep -q '^DATABASE_URL=' .env 2>/dev/null && :
+  if ! grep -q '^DATABASE_URL=' .env 2>/dev/null; then
+    echo 'DATABASE_URL="postgresql://postgres:postgres@localhost:5432/kab?schema=public"' >> .env
+  else
+    # Ensure it points to local docker
+    sed -i.bak 's|^DATABASE_URL=.*|DATABASE_URL="postgresql://postgres:postgres@localhost:5432/kab?schema=public"|' .env || true
+  fi
+  grep -q '^NEXTAUTH_URL=' .env || echo 'NEXTAUTH_URL="http://localhost:3001"' >> .env
+  grep -q '^NEXTAUTH_SECRET=' .env || echo 'NEXTAUTH_SECRET="dev-secret-change-me"' >> .env
+  pass ".env ready"
 else
-  echo "No seed script found — skipping."
+  pass ".env exists (using current values)"
 fi
 
-banner "Building Next.js (prod)"
-npm run build
+# 2) Install deps
+say "Install dependencies"
+command -v pnpm >/dev/null || npm i -g pnpm
+pnpm install
 
-banner "Starting server on ${BASE_URL}"
-PORT=3001 npm run start >/tmp/brixel_sanity_server.log 2>&1 &
-SRV_PID=$!
-cleanup() { kill "$SRV_PID" >/dev/null 2>&1 || true; }
-trap cleanup EXIT
+# 3) Prisma migrate + seed (optional seed)
+say "Prisma migrate"
+pnpm prisma migrate deploy || pnpm prisma migrate dev --name init
+if [[ -f prisma/seed.ts || -f prisma/seed.js ]]; then
+  say "Seeding database"
+  pnpm prisma db seed || true
+fi
+pass "DB migrated (and seeded if provided)"
 
-banner "Waiting for server to come up..."
-for i in $(seq 1 60); do
-  if curl -sSf "${BASE_URL}/" >/dev/null 2>&1; then
-    pass "Server is up"
-    break
-  fi
-  sleep 0.5
-  if [ "$i" -eq 60 ]; then
-    fail "Server did not start in time"
-    tail -n 80 /tmp/brixel_sanity_server.log || true
-    exit 1
-  fi
+# 4) Build
+say "Build production"
+pnpm build
+
+# 5) Start server on :$PORT
+say "Start server"
+( PORT="$PORT" pnpm start > .sanity_server.log 2>&1 ) &
+SERVER_PID=$!
+trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+
+say "Wait for server"
+for i in {1..60}; do
+  curl -fsS "$BASE" >/dev/null 2>&1 && { pass "Server up"; break; }
+  sleep 1
+  [[ $i -eq 60 ]] && { fail "Server did not start"; echo "Logs:"; tail -n 80 .sanity_server.log; exit 1; }
 done
 
-RESULTS=()
+# Helpers
+jok(){ jq -e "$1" >/dev/null 2>&1; }
 
-test_api_aiquote() {
-  banner "Test: /api/aiQuote"
-  RESP="$(curl -s -X POST "${BASE_URL}/api/aiQuote" \
-    -H 'content-type: application/json' \
-    -d '{"service":"loft conversion","areaSqm":35,"quality":"standard","postcode":"ME15"}' || true)"
-  echo "$RESP"
-  if echo "$RESP" | grep -q '"ok": *true' && echo "$RESP" | grep -q '"quote"'; then
-    RESULTS+=("PASS aiQuote")
-  else
-    RESULTS+=("FAIL aiQuote")
-  fi
-}
+# 6) Providers
+say "Check NextAuth providers"
+if curl -fsS "$BASE/api/auth/providers" | jok 'type=="object"'; then pass "/api/auth/providers OK"; else fail "/api/auth/providers failed"; fi
 
-test_api_lead() {
-  banner "Test: /api/lead"
-  RESP="$(curl -s -X POST "${BASE_URL}/api/lead" \
-    -H 'content-type: application/json' \
-    -d '{"service":"extension","description":"Single-storey rear extension approx 25sqm.","budgetMin":20000,"budgetMax":45000,"timeline":"3-6 months","name":"Jane Doe","email":"jane@example.com","source":"quote-wizard"}' || true)"
-  echo "$RESP"
-  if echo "$RESP" | grep -q '"ok": *true' && echo "$RESP" | grep -Eq '"id":"[a-z0-9]+'; then
-    RESULTS+=("PASS lead")
-  else
-    RESULTS+=("FAIL lead")
-  fi
-}
-
-test_providers() {
-  banner "Test: /api/auth/providers (credentials should appear; google if configured)"
-  RESP="$(curl -s "${BASE_URL}/api/auth/providers" || true)"
-  echo "$RESP"
-  if echo "$RESP" | grep -q '"credentials"'; then
-    RESULTS+=("PASS providers")
-  else
-    RESULTS+=("WARN providers-no-credentials")
-  fi
-}
-
-test_sitemap() {
-  banner "Test: sitemap.xml and robots.txt"
-  if curl -sfI "${BASE_URL}/sitemap.xml" >/dev/null; then pass "sitemap.xml 200"; else RESULTS+=("FAIL sitemap"); fi
-  if curl -sfI "${BASE_URL}/robots.txt"  >/dev/null; then pass "robots.txt 200";  else RESULTS+=("FAIL robots");  fi
-}
-
-test_auth_guards() {
-  banner "Test: auth guards on /home and /trade (unauthenticated)"
-  HOME_CODE=$(curl -s -o /dev/null -w "%{http_code}" -L -I "${BASE_URL}/home" || true)
-  TRADE_CODE=$(curl -s -o /dev/null -w "%{http_code}" -L -I "${BASE_URL}/trade" || true)
-  echo "HOME status (after redirects): ${HOME_CODE}"
-  echo "TRADE status (after redirects): ${TRADE_CODE}"
-  case "$HOME_CODE" in 200|401|403|302|303) RESULTS+=("PASS guard-home");; *) RESULTS+=("FAIL guard-home");; esac
-  case "$TRADE_CODE" in 200|401|403|302|303) RESULTS+=("PASS guard-trade");; *) RESULTS+=("FAIL guard-trade");; esac
-}
-
-test_debug_vars() {
-  banner "Test: /api/debug-vars (optional)"
-  CODE=$(curl -s -o /dev/null -w "%{http_code}" "${BASE_URL}/api/debug-vars" || true)
-  if [ "$CODE" = "200" ]; then
-    curl -s "${BASE_URL}/api/debug-vars"
-    RESULTS+=("PASS debug-vars")
-  else
-    echo "Route missing (not critical)."
-    RESULTS+=("SKIP debug-vars")
-  fi
-}
-
-test_api_aiquote
-test_api_lead
-test_providers
-test_sitemap
-test_auth_guards
-test_debug_vars
-
-banner "Sanity Summary"
-FAILS=0
-for R in "${RESULTS[@]}"; do
-  if [[ "$R" == FAIL* ]]; then fail "$R"; FAILS=$((FAILS+1))
-  elif [[ "$R" == WARN* ]]; then printf "\033[1;33m! %s\033[0m\n" "$R"
-  elif [[ "$R" == SKIP* ]]; then printf "\033[1;34m• %s\033[0m\n" "$R"
-  else pass "$R"; fi
-done
-
-banner "Server log (last 40 lines)"
-tail -n 40 /tmp/brixel_sanity_server.log || true
-
-if [ "$FAILS" -gt 0 ]; then
-  echo
-  fail "Sanity tests had ${FAILS} failure(s)."
-  exit 1
+# 7) aiQuote
+say "Test /api/aiQuote"
+AI_REQ='{"service":"EXTENSION","postcode":"CT1 2AB","scope":"Single-storey rear extension ~20m2","propertyType":"HOUSE","rooms":2,"propertyAge":"1930s","ownership":"OWNER","permissions":"NONE","budgetMin":20000,"budgetMax":45000,"urgency":"MEDIUM","timeline":"1-3 months"}'
+AI_RES=$(curl -fsS -X POST "$BASE/api/aiQuote" -H "Content-Type: application/json" -d "$AI_REQ" || true)
+if echo "$AI_RES" | jok '.estimateLow and .estimateHigh'; then
+  pass "/api/aiQuote returned estimateLow/high"
+else
+  fail "/api/aiQuote unexpected response"
+  echo "  ↳ $AI_RES"
 fi
 
+# 8) lead (CRITICAL)
+say "Test /api/lead"
+LEAD_REQ='{"service":"EXTENSION","postcode":"CT1 2AB","scope":"Rear extension ~20m2 incl. steels","propertyType":"HOUSE","rooms":2,"propertyAge":"1930s","ownership":"OWNER","permissions":"NONE","budgetMin":20000,"budgetMax":45000,"urgency":"MEDIUM","timeline":"1-3 months","contact":{"name":"Test User","email":"lead@test.local","phone":"+44 7000 000000"}}'
+LEAD_RES=$(curl -sS -w "\n%{http_code}" -X POST "$BASE/api/lead" -H "Content-Type: application/json" -d "$LEAD_REQ" || true)
+LEAD_BODY=$(echo "$LEAD_RES" | head -n1); LEAD_CODE=$(echo "$LEAD_RES" | tail -n1)
+if [[ "$LEAD_CODE" =~ ^2 ]]; then
+  if echo "$LEAD_BODY" | jok '.ok==true and (.id|length>0)'; then
+    pass "/api/lead accepted and returned id"
+    echo "$LEAD_BODY" | jok 'has("delivered")' && pass "/api/lead delivered flag present" || fail "/api/lead missing delivered flag"
+  else
+    fail "/api/lead 2xx but unexpected body"; echo "  ↳ $LEAD_BODY"
+  fi
+else
+  fail "/api/lead HTTP $LEAD_CODE"; echo "  ↳ $LEAD_BODY"
+fi
+
+# 9) Protected routes
+say "Check protected routes"
+HOME_HEAD=$(curl -sSI "$BASE/home" | tr -d '\r')
+if echo "$HOME_HEAD" | grep -qi '^location: .*auth/signin'; then
+  pass "/home redirects to /auth/signin when unauthenticated"
+else
+  fail "/home should be protected"
+  echo "$HOME_HEAD"
+fi
+
+TRADE_HEAD=$(curl -sSI "$BASE/trade" | tr -d '\r')
+if echo "$TRADE_HEAD" | grep -qi '^location: .*auth/signin'; then
+  pass "/trade redirects to /auth/signin when unauthenticated"
+else
+  fail "/trade should be protected"
+  echo "$TRADE_HEAD"
+fi
+
+# 10) SEO files
+say "Check sitemap/robots"
+curl -fsS "$BASE/sitemap.xml" >/dev/null && pass "sitemap.xml present" || fail "sitemap.xml missing"
+curl -fsS "$BASE/robots.txt"  >/dev/null && pass "robots.txt present"  || fail "robots.txt missing"
+
+# Summary
+say "Summary"
+printf '%s\n' "${summary[@]}"
 echo
-pass "All critical sanity tests passed."
-echo "Sign in at ${BASE_URL}/auth/signin (use seeded users)."
+[[ $fails -eq 0 ]] && { echo "✅ Sanity PASS"; exit 0; } || { echo "❌ Sanity FAIL ($fails) — see details above and .sanity_server.log"; exit 1; }

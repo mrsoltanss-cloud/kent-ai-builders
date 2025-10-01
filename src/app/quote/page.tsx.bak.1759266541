@@ -1,0 +1,317 @@
+"use client";
+
+import { useState } from "react";
+
+type AttachMeta = { name: string; size: number; type?: string };
+
+type FormDataState = {
+  // Stage 1
+  service: string;
+  propertyType?: "DETACHED" | "SEMI" | "TERRACE" | "FLAT" | "BUNGALOW" | "OTHER";
+  ageBand?: "PRE_1950" | "Y1950_2000" | "POST_2000" | "UNKNOWN";
+  // Stage 2
+  areaSqm?: number;
+  rooms?: number;
+  structuralChanges?: boolean;
+  finishLevel?: "BASIC" | "STANDARD" | "PREMIUM";
+  // Stage 3
+  accessLevel?: "GOOD" | "LIMITED" | "SCAFFOLD_LIKELY";
+  parking?: boolean;
+  urgency?: "ASAP" | "M1_3" | "M3_6" | "FLEXIBLE";
+  // Stage 4
+  planning?: "APPROVED" | "PENDING" | "NOT_REQUIRED" | "UNSURE";
+  notes?: string;
+  attachmentsMeta?: AttachMeta[];
+  // Stage 5
+  name?: string;
+  email?: string;
+  phone?: string;
+  postcode?: string;
+  budgetMin?: number;
+  budgetMax?: number;
+};
+
+export default function QuoteWizard() {
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [estimate, setEstimate] = useState<{ low: number; high: number; currency: string } | null>(null);
+  const [form, setForm] = useState<FormDataState>({
+    service: "",
+    finishLevel: "STANDARD",
+    ageBand: "UNKNOWN",
+    accessLevel: "GOOD",
+    urgency: "FLEXIBLE",
+  });
+
+  const pct = Math.round((step / 5) * 100);
+
+  function upd<K extends keyof FormDataState>(k: K, v: FormDataState[K]) {
+    setForm((f) => ({ ...f, [k]: v }));
+  }
+
+  async function next() {
+    setStep((s) => Math.min(5, s + 1));
+  }
+  async function prev() {
+    setStep((s) => Math.max(1, s - 1));
+  }
+
+  async function getEstimate() {
+    setLoading(true);
+    setEstimate(null);
+    try {
+      const res = await fetch("/api/aiQuote", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          service: form.service,
+          rooms: form.rooms,
+          areaSqm: form.areaSqm,
+          postcode: form.postcode,
+          propertyType: form.propertyType,
+          ageBand: form.ageBand,
+          structuralChanges: form.structuralChanges,
+          finishLevel: form.finishLevel,
+          accessLevel: form.accessLevel,
+          parking: form.parking,
+          urgency: form.urgency,
+          notes: form.notes,
+        }),
+      });
+      const json = await res.json();
+      if (json?.quote) setEstimate(json.quote);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function submitLead() {
+    setLoading(true);
+    try {
+      const payload = {
+        service: form.service,
+        description: form.notes || "Quote request",
+        budgetMin: form.budgetMin ? Number(form.budgetMin) : undefined,
+        budgetMax: form.budgetMax ? Number(form.budgetMax) : undefined,
+        timeline: undefined, // legacy
+        // structured
+        areaSqm: form.areaSqm ? Number(form.areaSqm) : undefined,
+        rooms: form.rooms ? Number(form.rooms) : undefined,
+        postcode: form.postcode,
+        propertyType: form.propertyType,
+        ageBand: form.ageBand,
+        structuralChanges: form.structuralChanges,
+        finishLevel: form.finishLevel,
+        accessLevel: form.accessLevel,
+        parking: form.parking,
+        planning: form.planning,
+        urgency: form.urgency,
+        attachmentsMeta: form.attachmentsMeta || [],
+        // contact
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        source: "quote-wizard",
+      };
+      const r = await fetch("/api/lead", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const j = await r.json();
+      if (j?.ok) {
+        alert("Thanks! We’ve received your request. ID: " + j.id);
+      } else {
+        alert("Something went wrong submitting your request.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function onFilesSelected(files: FileList | null) {
+    if (!files) return;
+    const list: AttachMeta[] = [];
+    for (const f of Array.from(files)) list.push({ name: f.name, size: f.size, type: f.type });
+    upd("attachmentsMeta", list);
+  }
+
+  return (
+    <main className="max-w-3xl mx-auto p-6">
+      <h1 className="text-2xl font-semibold">Get your quote</h1>
+      <p className="text-sm text-gray-600 mt-1">
+        The more details (photos, plans, permissions) you provide, the more accurate your AI-powered quotation will be.
+      </p>
+
+      {/* Progress bar */}
+      <div className="w-full bg-gray-200 h-2 rounded-full mt-6">
+        <div className="h-2 bg-black rounded-full transition-all" style={{ width: `${pct}%` }} />
+      </div>
+      <p className="text-xs text-gray-500 mt-2">{pct}% complete</p>
+
+      <div className="mt-6 space-y-6">
+        {step === 1 && (
+          <section className="space-y-4">
+            <h2 className="text-lg font-medium">Project basics</h2>
+            <label className="block">
+              <span className="text-sm">Service</span>
+              <input className="mt-1 w-full border rounded-xl p-2" value={form.service} onChange={e=>upd("service", e.target.value)} placeholder="e.g. Loft conversion" />
+            </label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className="block">
+                <span className="text-sm">Property type</span>
+                <select className="mt-1 w-full border rounded-xl p-2" value={form.propertyType ?? ""} onChange={e=>upd("propertyType", e.target.value as any)}>
+                  <option value="">Select…</option>
+                  <option>DETACHED</option><option>SEMI</option><option>TERRACE</option><option>FLAT</option><option>BUNGALOW</option><option>OTHER</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-sm">Property age</span>
+                <select className="mt-1 w-full border rounded-xl p-2" value={form.ageBand ?? "UNKNOWN"} onChange={e=>upd("ageBand", e.target.value as any)}>
+                  <option>PRE_1950</option><option>Y1950_2000</option><option>POST_2000</option><option>UNKNOWN</option>
+                </select>
+              </label>
+            </div>
+          </section>
+        )}
+
+        {step === 2 && (
+          <section className="space-y-4">
+            <h2 className="text-lg font-medium">Size & scope</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <label className="block">
+                <span className="text-sm">Area (sqm)</span>
+                <input type="number" min={1} className="mt-1 w-full border rounded-xl p-2" value={form.areaSqm ?? ""} onChange={e=>upd("areaSqm", Number(e.target.value)||undefined)} />
+              </label>
+              <label className="block">
+                <span className="text-sm">Rooms affected</span>
+                <input type="number" min={1} className="mt-1 w-full border rounded-xl p-2" value={form.rooms ?? ""} onChange={e=>upd("rooms", Number(e.target.value)||undefined)} />
+              </label>
+              <label className="block">
+                <span className="text-sm">Finish level</span>
+                <select className="mt-1 w-full border rounded-xl p-2" value={form.finishLevel ?? "STANDARD"} onChange={e=>upd("finishLevel", e.target.value as any)}>
+                  <option>BASIC</option><option>STANDARD</option><option>PREMIUM</option>
+                </select>
+              </label>
+            </div>
+            <label className="inline-flex items-center gap-2">
+              <input type="checkbox" className="size-4" checked={!!form.structuralChanges} onChange={e=>upd("structuralChanges", e.target.checked)} />
+              <span className="text-sm">Includes structural changes (e.g., removing walls, new roof/foundations)</span>
+            </label>
+          </section>
+        )}
+
+        {step === 3 && (
+          <section className="space-y-4">
+            <h2 className="text-lg font-medium">Logistics</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <label className="block">
+                <span className="text-sm">Access</span>
+                <select className="mt-1 w-full border rounded-xl p-2" value={form.accessLevel ?? "GOOD"} onChange={e=>upd("accessLevel", e.target.value as any)}>
+                  <option>GOOD</option><option>LIMITED</option><option>SCAFFOLD_LIKELY</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-sm">Parking available?</span>
+                <select className="mt-1 w-full border rounded-xl p-2" value={form.parking === undefined ? "" : form.parking ? "yes" : "no"} onChange={e=>upd("parking", e.target.value === "" ? undefined : e.target.value === "yes")}>
+                  <option value="">Select…</option>
+                  <option value="yes">Yes</option><option value="no">No</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-sm">Timeline</span>
+                <select className="mt-1 w-full border rounded-xl p-2" value={form.urgency ?? "FLEXIBLE"} onChange={e=>upd("urgency", e.target.value as any)}>
+                  <option>ASAP</option><option>M1_3</option><option>M3_6</option><option>FLEXIBLE</option>
+                </select>
+              </label>
+            </div>
+          </section>
+        )}
+
+        {step === 4 && (
+          <section className="space-y-4">
+            <h2 className="text-lg font-medium">Extras & uploads</h2>
+            <label className="block">
+              <span className="text-sm">Planning/permissions</span>
+              <select className="mt-1 w-full border rounded-xl p-2" value={form.planning ?? ""} onChange={e=>upd("planning", e.target.value as any)}>
+                <option value="">Select…</option>
+                <option>APPROVED</option><option>PENDING</option><option>NOT_REQUIRED</option><option>UNSURE</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-sm">Additional notes</span>
+              <textarea className="mt-1 w-full border rounded-xl p-2 min-h-28" value={form.notes ?? ""} onChange={e=>upd("notes", e.target.value)} placeholder="Tell us about materials, finishes, any constraints…" />
+            </label>
+            <label className="block">
+              <span className="text-sm">Upload photos/plans (optional)</span>
+              <input className="mt-1 w-full" type="file" multiple onChange={e=>onFilesSelected(e.target.files)} />
+              {form.attachmentsMeta?.length ? (
+                <ul className="text-xs text-gray-600 mt-2 list-disc ml-5">
+                  {form.attachmentsMeta.map((a,i)=><li key={i}>{a.name} ({Math.round(a.size/1024)} KB)</li>)}
+                </ul>
+              ) : null}
+            </label>
+            <button
+              onClick={getEstimate}
+              disabled={loading || !form.service}
+              className="px-4 py-2 rounded-xl bg-black text-white disabled:opacity-50"
+            >
+              {loading ? "Calculating…" : "Get instant estimate"}
+            </button>
+            {estimate && (
+              <p className="mt-3 text-sm">
+                Estimated range: <strong>£{estimate.low.toLocaleString()} – £{estimate.high.toLocaleString()}</strong>
+              </p>
+            )}
+          </section>
+        )}
+
+        {step === 5 && (
+          <section className="space-y-4">
+            <h2 className="text-lg font-medium">Contact details</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className="block">
+                <span className="text-sm">Name</span>
+                <input className="mt-1 w-full border rounded-xl p-2" value={form.name ?? ""} onChange={e=>upd("name", e.target.value)} />
+              </label>
+              <label className="block">
+                <span className="text-sm">Email</span>
+                <input type="email" className="mt-1 w-full border rounded-xl p-2" value={form.email ?? ""} onChange={e=>upd("email", e.target.value)} />
+              </label>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <label className="block">
+                <span className="text-sm">Phone</span>
+                <input className="mt-1 w-full border rounded-xl p-2" value={form.phone ?? ""} onChange={e=>upd("phone", e.target.value)} />
+              </label>
+              <label className="block">
+                <span className="text-sm">Postcode</span>
+                <input className="mt-1 w-full border rounded-xl p-2" value={form.postcode ?? ""} onChange={e=>upd("postcode", e.target.value)} />
+              </label>
+              <label className="block">
+                <span className="text-sm">Budget range (min–max, £)</span>
+                <div className="mt-1 grid grid-cols-2 gap-2">
+                  <input type="number" className="w-full border rounded-xl p-2" placeholder="Min" value={form.budgetMin ?? ""} onChange={e=>upd("budgetMin", Number(e.target.value)||undefined)} />
+                  <input type="number" className="w-full border rounded-xl p-2" placeholder="Max" value={form.budgetMax ?? ""} onChange={e=>upd("budgetMax", Number(e.target.value)||undefined)} />
+                </div>
+              </label>
+            </div>
+            <button
+              onClick={submitLead}
+              disabled={loading || !form.service || !form.email}
+              className="px-4 py-2 rounded-xl bg-black text-white disabled:opacity-50"
+            >
+              {loading ? "Submitting…" : "Submit request"}
+            </button>
+          </section>
+        )}
+      </div>
+
+      {/* Nav */}
+      <div className="flex justify-between mt-8">
+        <button onClick={prev} disabled={step === 1} className="px-3 py-2 rounded-xl border disabled:opacity-50">Back</button>
+        <button onClick={next} disabled={step === 5} className="px-3 py-2 rounded-xl border disabled:opacity-50">Next</button>
+      </div>
+    </main>
+  );
+}

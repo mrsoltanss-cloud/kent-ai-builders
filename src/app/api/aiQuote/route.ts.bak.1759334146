@@ -12,10 +12,13 @@ const schema = z.object({
   notes: z.string().optional(),
 });
 
-type Input = z.infer<typeof schema>;
-
 // Simple deterministic fallback if AI/lib fails
-function fallbackEstimate(input: Input) {
+function fallbackEstimate(input: {
+  service: string;
+  areaSqm?: number;
+  rooms?: number;
+  quality?: "basic" | "standard" | "premium";
+}) {
   const qualityMul = input.quality === "premium" ? 1.3 : input.quality === "basic" ? 0.85 : 1.0;
   const area = Math.max(10, Math.min(300, Math.round(input.areaSqm ?? 25)));
   const rooms = Math.max(1, Math.min(6, Math.round(input.rooms ?? 1)));
@@ -47,7 +50,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const input: Input = parsed.data;
+  const input = parsed.data;
   let quote;
   let usedAI = false;
 

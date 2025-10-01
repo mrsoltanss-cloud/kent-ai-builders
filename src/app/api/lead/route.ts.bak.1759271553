@@ -1,0 +1,110 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { PrismaClient, LeadStatus, Prisma } from "@prisma/client";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/options";
+import { getQuote } from "@/lib/ai/quote";
+
+const db = new PrismaClient();
+
+const LeadSchema = z.object({
+  service: z.string().min(2),
+  description: z.string().min(10),
+  postcode: z.string().optional(),
+  rooms: z.number().int().positive().optional(),
+  areaSqm: z.number().positive().optional(),
+  propertyAge: z.string().optional(),
+  permissions: z.string().optional(),
+  urgency: z.string().optional(),
+  budgetMin: z.number().int().nonnegative().optional(),
+  budgetMax: z.number().int().nonnegative().optional(),
+  timeline: z.string().optional(),
+  name: z.string().optional(),
+  email: z.string().email().optional(),
+  phone: z.string().optional(),
+  source: z.string().optional(),
+});
+type LeadInput = z.infer<typeof LeadSchema>;
+
+async function deliverToWebhook(lead: any) {
+  const url = process.env.SHEETS_WEBHOOK_URL;
+  if (!url) return { ok: true, skipped: true };
+  for (let i = 0; i < 3; i++) {
+    try {
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(lead),
+      });
+      if (r.ok) return { ok: true };
+    } catch {}
+    await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
+  }
+  return { ok: false };
+}
+
+export async function POST(req: Request) {
+  const json = await req.json().catch(() => ({}));
+  const parsed = LeadSchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { ok: false, error: "Invalid payload", issues: parsed.error.format() },
+      { status: 400 }
+    );
+  }
+
+  const data = parsed.data;
+
+  // Compute a quote snapshot (fallback if no OPENAI_API_KEY)
+  const qp = {
+    service: data.service,
+    rooms: data.rooms,
+    areaSqm: data.areaSqm,
+    quality: "standard" as const,
+    postcode: data.postcode,
+    notes: data.description,
+  };
+  const q = await getQuote(qp);
+  const estimateLow = Math.round(q.low ?? 0);
+  const estimateHigh = Math.round(q.high ?? 0);
+  const currency = q.currency ?? "GBP";
+
+  // Persist ONLY columns we know exist in your current DB schema
+  const created = await db.lead.create({
+    data: {
+      service: data.service,
+      description: data.description,
+      postcode: data.postcode ?? null,
+      rooms: data.rooms ?? null,
+      areaSqm: data.areaSqm ?? null,
+      propertyAge: data.propertyAge ?? null,
+      permissions: data.permissions ?? null,
+      urgency: data.urgency ?? null,
+      budgetMin: data.budgetMin ?? null,
+      budgetMax: data.budgetMax ?? null,
+      timeline: data.timeline ?? null,
+      name: data.name ?? null,
+      email: data.email ?? null,
+      phone: data.phone ?? null,
+      source: data.source ?? "quote-wizard",
+      status: LeadStatus.QUEUED,
+    } as Prisma.LeadCreateInput,
+  });
+
+  // Optional webhook
+  const delivery = await deliverToWebhook({ id: created.id, ...data });
+
+  if (delivery.ok) {
+    await db.lead.update({
+      where: { id: created.id },
+      data: { status: LeadStatus.DELIVERED, deliveredAt: new Date() },
+    });
+  }
+
+  return NextResponse.json({
+    ok: true,
+    id: created.id,
+    estimate: { low: estimateLow, high: estimateHigh, currency },
+    delivered: !!delivery.ok,
+  });
+}

@@ -1,0 +1,89 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { PrismaClient, LeadStatus, Prisma } from "@prisma/client";
+
+const db = new PrismaClient();
+
+const LeadSchema = z.object({
+  // Basics
+  service: z.string().min(2),
+  description: z.string().min(10),
+  budgetMin: z.number().int().nonnegative().optional(),
+  budgetMax: z.number().int().nonnegative().optional(),
+  timeline: z.string().optional(), // legacy free text
+
+  // Structured fields
+  areaSqm: z.number().int().positive().optional(),
+  rooms: z.number().int().positive().optional(),
+  postcode: z.string().optional(),
+  propertyType: z.enum(["DETACHED","SEMI","TERRACE","FLAT","BUNGALOW","OTHER"]).optional(),
+  ageBand: z.enum(["PRE_1950","Y1950_2000","POST_2000","UNKNOWN"]).optional(),
+  structuralChanges: z.boolean().optional(),
+  finishLevel: z.enum(["BASIC","STANDARD","PREMIUM"]).optional(),
+  accessLevel: z.enum(["GOOD","LIMITED","SCAFFOLD_LIKELY"]).optional(),
+  parking: z.boolean().optional(),
+  planning: z.enum(["APPROVED","PENDING","NOT_REQUIRED","UNSURE"]).optional(),
+  urgency: z.enum(["ASAP","M1_3","M3_6","FLEXIBLE"]).optional(),
+
+  // Attachments meta only (no upload service yet)
+  attachmentsMeta: z.array(
+    z.object({
+      name: z.string(),
+      size: z.number().int().nonnegative(),
+      type: z.string().optional(),
+    })
+  ).optional(),
+
+  // Contact + source
+  name: z.string().optional(),
+  email: z.string().email().optional(),
+  phone: z.string().optional(),
+  source: z.string().optional(),
+});
+
+async function deliverToWebhook(lead: any) {
+  const url = process.env.SHEETS_WEBHOOK_URL;
+  if (!url) return { ok: true, skipped: true };
+
+  for (let i = 0; i < 3; i++) {
+    try {
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(lead),
+      });
+      if (r.ok) return { ok: true };
+    } catch {}
+    await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
+  }
+  return { ok: false };
+}
+
+export async function POST(req: Request) {
+  const json = await req.json().catch(() => ({}));
+  const parsed = LeadSchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { ok: false, error: "Invalid payload", issues: parsed.error.format() },
+      { status: 400 }
+    );
+  }
+
+  const data = parsed.data as Prisma.LeadCreateInput;
+  const created = await db.lead.create({ data });
+
+  const result = await deliverToWebhook(created);
+  if (result.ok) {
+    await db.lead.update({
+      where: { id: created.id },
+      data: { status: LeadStatus.DELIVERED, deliveredAt: new Date() },
+    });
+    return NextResponse.json({ ok: true, id: created.id, delivered: true });
+  }
+
+  await db.lead.update({
+    where: { id: created.id },
+    data: { status: LeadStatus.QUEUED },
+  });
+  return NextResponse.json({ ok: true, id: created.id, delivered: false, queued: true });
+}

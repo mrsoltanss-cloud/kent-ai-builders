@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  HOMEOWNER
+  TRADER
+  ADMIN
+}
+
+enum LeadStatus {
+  NEW
+  DELIVERED
+  QUEUED
+  FAILED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  // Map to existing column name so we don't drop data:
+  password  String?  @map("passwordHash") // hashed for credentials auth
+  name      String?
+  role      Role     @default(HOMEOWNER)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Lead {
+  id          String     @id @default(cuid())
+  service     String
+  description String
+  budgetMin   Int?
+  budgetMax   Int?
+  timeline    String?
+  name        String?
+  email       String?
+  phone       String?
+  source      String?     // e.g. "quote-wizard"
+  status      LeadStatus  @default(NEW)
+  deliveredAt DateTime?
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}

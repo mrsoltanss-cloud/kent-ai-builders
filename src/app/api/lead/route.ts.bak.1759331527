@@ -1,0 +1,201 @@
+// src/app/api/lead/route.ts
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { PrismaClient } from "@prisma/client";
+import { randomUUID } from "node:crypto";
+
+const prisma = new PrismaClient();
+
+// Input schema (UI -> server)
+const UiUrgency = z.enum(["LOW", "MEDIUM", "HIGH"]);
+const LeadSchema = z.object({
+  service: z.string().min(1),
+  postcode: z.string().min(2).optional(),
+  description: z.string().min(1).optional(),
+  scope: z.string().min(1).optional(),
+  propertyType: z.string().optional(),
+  rooms: z.number().int().nonnegative().optional(),
+  areaSqm: z.number().int().nonnegative().optional(),
+  budgetMin: z.number().int().nonnegative().optional(),
+  budgetMax: z.number().int().nonnegative().optional(),
+  urgency: UiUrgency,
+  timeline: z.string().optional(),
+  contact: z.object({
+    name: z.string().optional(),
+    email: z.string().email().optional(),
+    phone: z.string().optional(),
+  }).optional(),
+});
+
+type ColInfo = {
+  column_name: string;
+  is_nullable: "YES" | "NO";
+  column_default: string | null;
+  data_type: string | null;
+  udt_name: string | null;
+};
+
+async function detectLeadTable(): Promise<"Lead" | "lead"> {
+  const rows: Array<{ table_name: string }> = await prisma.$queryRawUnsafe(
+    `SELECT table_name FROM information_schema.tables
+     WHERE table_schema='public' AND table_name IN ('Lead','lead')`
+  );
+  const hit = rows.find(r => r.table_name === "Lead") || rows.find(r => r.table_name === "lead");
+  if (!hit) throw new Error(`Lead table not found (expected "Lead" or "lead").`);
+  return hit.table_name as "Lead" | "lead";
+}
+
+async function getColumns(table: "Lead" | "lead") {
+  const rows: Array<ColInfo> = await prisma.$queryRawUnsafe(
+    `SELECT column_name, is_nullable, column_default, data_type, udt_name
+       FROM information_schema.columns
+      WHERE table_schema='public' AND table_name=$1`,
+    table
+  );
+  const lowerToExact = new Map<string, string>();
+  const exactToInfo = new Map<string, ColInfo>();
+  for (const r of rows) {
+    lowerToExact.set(r.column_name.toLowerCase(), r.column_name);
+    exactToInfo.set(r.column_name, r);
+  }
+  return { lowerToExact, exactToInfo };
+}
+
+async function enumLabels(table: "Lead" | "lead", columnExact: string): Promise<string[]> {
+  const rows: Array<{ enumlabel: string }> = await prisma.$queryRawUnsafe(
+    `SELECT e.enumlabel
+       FROM information_schema.columns c
+       JOIN pg_type t ON t.typname = c.udt_name
+       JOIN pg_enum e ON e.enumtypid = t.oid
+      WHERE c.table_schema='public'
+        AND c.table_name=$1
+        AND c.column_name=$2
+      ORDER BY e.enumsortorder`,
+    table, columnExact
+  );
+  return rows.map(r => r.enumlabel);
+}
+
+// Map UI -> DB enums
+function mapUrgency(ui: "LOW" | "MEDIUM" | "HIGH"): "ASAP" | "M1_3" | "M3_6" | "FLEXIBLE" {
+  if (ui === "HIGH") return "ASAP";
+  if (ui === "MEDIUM") return "M1_3";
+  return "FLEXIBLE";
+}
+function mapPropertyType(input?: string): "DETACHED" | "SEMI" | "TERRACE" | "FLAT" | "BUNGALOW" | "OTHER" | null {
+  if (!input) return null;
+  const x = input.trim().toUpperCase();
+  if (x === "DETACHED") return "DETACHED";
+  if (x === "SEMI" || x === "SEMI-DETACHED" || x === "SEMI DETACHED") return "SEMI";
+  if (x === "TERRACE" || x === "TERRACED") return "TERRACE";
+  if (x === "FLAT" || x === "APARTMENT" || x === "MAISONETTE") return "FLAT";
+  if (x === "BUNGALOW") return "BUNGALOW";
+  if (x === "HOUSE") return "OTHER";
+  return "OTHER";
+}
+
+export async function GET() {
+  try {
+    const table = await detectLeadTable();
+    const { exactToInfo } = await getColumns(table);
+
+    const schema = Array.from(exactToInfo.values()).map(c => ({
+      column: c.column_name,
+      nullable: c.is_nullable,
+      default: c.column_default,
+      type: c.udt_name ?? c.data_type,
+    }));
+
+    const urgencyEnums = schema.find(s => s.column === "urgency") ? await enumLabels(table, "urgency") : [];
+    const propertyEnums = schema.find(s => s.column === "propertyType") ? await enumLabels(table, "propertyType") : [];
+
+    // <<< NEW: live row count from the same connection >>>
+    const countRows: Array<{ c: number }> = await prisma.$queryRawUnsafe(
+      `SELECT COUNT(*)::int AS c FROM "public"."${table}"`
+    );
+    const count = countRows?.[0]?.c ?? 0;
+
+    return NextResponse.json({ ok: true, table, count, schema, enums: { urgency: urgencyEnums, propertyType: propertyEnums } });
+  } catch (e: any) {
+    return NextResponse.json({ ok: false, error: "INSPECT_FAILED", message: String(e?.message || e) }, { status: 500 });
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const json = await req.json();
+    const parsed = LeadSchema.safeParse(json);
+    if (!parsed.success) {
+      return NextResponse.json({ ok: false, error: "Invalid payload", issues: parsed.error.flatten() }, { status: 400 });
+    }
+
+    const d = parsed.data;
+    const table = await detectLeadTable();
+    const { lowerToExact, exactToInfo } = await getColumns(table);
+
+    const has = (lower: string) => lowerToExact.has(lower);
+    const exact = (lower: string) => lowerToExact.get(lower)!;
+
+    const descriptionValue =
+      (d.description ?? d.scope ?? [d.service, d.postcode].filter(Boolean).join(" @ ")) || "Lead";
+
+    const colNames: string[] = [];
+    const params: any[] = [];
+    const exprs: string[] = [];
+
+    const push = (colExact: string, val: any, enumType?: string) => {
+      colNames.push(`"${colExact}"`);
+      params.push(val);
+      const ph = `$${params.length}`;
+      exprs.push(enumType ? `CAST(${ph} AS "${enumType}")` : ph);
+    };
+
+    if (exactToInfo.has("id")) push("id", randomUUID());
+    if (has("service")) push(exact("service"), d.service);
+    if (exactToInfo.has("description")) push("description", descriptionValue);
+    if (has("postcode")) push(exact("postcode"), d.postcode ?? null);
+
+    if (has("urgency")) push(exact("urgency"), mapUrgency(d.urgency), "Urgency");
+
+    if (has("budgetmin")) push(exact("budgetmin"), d.budgetMin ?? null);
+    if (has("budgetmax")) push(exact("budgetmax"), d.budgetMax ?? null);
+    if (has("timeline"))  push(exact("timeline"),  d.timeline  ?? null);
+    if (has("areasqm"))   push(exact("areasqm"),   d.areaSqm   ?? null);
+    if (has("rooms"))     push(exact("rooms"),     d.rooms     ?? null);
+
+    if (has("propertytype")) {
+      const mapped = mapPropertyType(d.propertyType);
+      if (mapped) push(exact("propertytype"), mapped, "PropertyType");
+    }
+
+    if (has("name")  && d.contact?.name)  push(exact("name"),  d.contact.name);
+    if (has("email") && d.contact?.email) push(exact("email"), d.contact.email);
+    if (has("phone") && d.contact?.phone) push(exact("phone"), d.contact.phone);
+
+    if (exactToInfo.has("updatedAt")) push("updatedAt", new Date());
+
+    const tableSql = `"public"."${table}"`;
+    const sql = `INSERT INTO ${tableSql} (${colNames.join(", ")})
+                 VALUES (${exprs.join(", ")})
+                 RETURNING "id"`;
+
+    const inserted: Array<{ id: string | number }> = await prisma.$queryRawUnsafe(sql, ...params);
+    const id = inserted?.[0]?.id ?? "";
+
+    let delivered = false;
+    if (process.env.WEBHOOK_URL) {
+      try {
+        const res = await fetch(process.env.WEBHOOK_URL, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ event: "lead.created", id, payload: d }),
+        });
+        delivered = res.ok;
+      } catch { delivered = false; }
+    }
+
+    return NextResponse.json({ ok: true, id: String(id), delivered });
+  } catch (err: any) {
+    return NextResponse.json({ ok: false, error: "DB_CREATE_FAILED", message: String(err?.message || err) }, { status: 500 });
+  }
+}
