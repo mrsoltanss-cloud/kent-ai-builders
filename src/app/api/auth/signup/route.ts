@@ -1,35 +1,24 @@
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { db } from "@/server/db";
-import { hashPassword } from "@/lib/auth/password";
+import { NextResponse } from "next/server"
+import { prisma } from "@/lib/prisma"
 
-const Schema = z.object({
-  name: z.string().min(1).max(100),
-  email: z.string().email(),
-  password: z.string().min(8).max(200),
-});
+export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { name, email, password } = Schema.parse(body);
+    const { name, email } = await req.json().catch(() => ({}))
+    if (!email) return NextResponse.json({ ok: false, error: "Email required" }, { status: 400 })
 
-    const existing = await db.user.findUnique({ where: { email } });
-    if (existing) {
-      return NextResponse.json({ error: "Email already in use" }, { status: 400 });
-    }
+    // Create or return existing user; default role is USER
+    const user = await prisma.user.upsert({
+      where: { email },
+      update: { name: name ?? undefined },
+      create: { email, name: name ?? null, role: "USER" },
+      select: { id: true, email: true, name: true, role: true },
+    })
 
-    const passwordHash = await hashPassword(password);
-
-    // Default role for new signups; adjust if you have enums
-    const user = await db.user.create({
-      data: { name, email, passwordHash, role: "HOMEOWNER" },
-      select: { id: true, email: true, name: true },
-    });
-
-    return NextResponse.json({ ok: true, user });
+    return NextResponse.json({ ok: true, user })
   } catch (e: any) {
-    const msg = e?.message || "Invalid request";
-    return NextResponse.json({ error: msg }, { status: 400 });
+    return NextResponse.json({ ok: false, error: e?.message ?? "Signup failed" }, { status: 500 })
   }
 }

@@ -8,59 +8,80 @@ datasource db {
 }
 
 enum Role {
-  HOMEOWNER
-  TRADER
+  USER
   ADMIN
 }
 
+enum LeadStatus {
+  PENDING
+  CONTACTED
+  WON
+  LOST
+}
+
+enum Urgency {
+  FLEXIBLE
+  SOON
+  URGENT
+}
+
 model User {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
+  email         String    @unique
   name          String?
-  email         String   @unique
-  emailVerified DateTime?
-  image         String?
-  passwordHash  String?
-  role          Role     @default(HOMEOWNER)
+  role          Role      @default(USER)
+  isBlocked     Boolean   @default(false)
+  blockedAt     DateTime?
+  blockedReason String?
+  // Keep the column if it exists in DB; it's optional in the app
+  passwordHash  String?   @map("passwordHash")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  accounts      Account[]
-  sessions      Session[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  leads       Lead[]
+  auditActor  AuditLog[] @relation("actor")
+  auditTarget AuditLog[] @relation("target")
 }
 
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String?
-  access_token      String?
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String?
-  session_state     String?
-
-  user  User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  @@unique([provider, providerAccountId])
+model Lead {
+  id          String     @id @default(cuid())
+  user        User       @relation(fields: [userId], references: [id])
+  userId      String
+  service     String
+  scope       String?
+  rooms       Int?
+  sqm         Int?
+  propertyAge Int?
+  urgency     Urgency
+  budget      Int?
+  timeline    String?
+  notes       String?
+  status      LeadStatus @default(PENDING)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
+model AuditLog {
+  id     String   @id @default(cuid())
+  // Map Prisma field `ts` to existing DB column `createdAt`
+  ts     DateTime @default(now()) @map("createdAt")
+  action String
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
+  // who did it
+  actor   User?   @relation("actor", fields: [actorId], references: [id])
+  actorId String?
 
-// Dead-letter queue for failed lead deliveries
-model LeadDeliveryDLQ {
-  id        String   @id @default(cuid())
-  payload   Json
-  reason    String
-  sink      String
-  attempts  Int      @default(0)
-  createdAt DateTime @default(now())
+  // which user it was about (optional)
+  target   User?   @relation("target", fields: [targetId], references: [id])
+  targetId String?
+
+  // optional lead target
+  leadId String?
+
+  meta Json?
+
+  @@index([ts])
+  @@index([action])
+  @@index([actorId])
+  @@index([targetId])
 }

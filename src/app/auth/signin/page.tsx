@@ -1,99 +1,71 @@
+// src/app/auth/signin/page.tsx
 "use client";
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import Link from "next/link";
 
 export default function SignInPage() {
-  const [email, setEmail] = useState("homeowner@brixel.uk");
-  const [password, setPassword] = useState("Password123!");
-  const [show, setShow] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Controlled inputs start empty => no default autofill
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setErr(null);
     setLoading(true);
-    setError(null);
+
     const res = await signIn("credentials", {
-      redirect: true,
-      callbackUrl: "/me",   // go to role-aware area after login
       email,
       password,
+      redirect: true,
+      callbackUrl: "/admin",
     });
-    if (!res?.ok) setError("Invalid email or password");
+
+    if (!res || (res as any)?.error) setErr("Invalid email or password");
+    setLoading(false);
   }
 
   return (
-    <main className="min-h-[70vh] flex items-center justify-center p-6">
-      <div className="w-full max-w-md rounded-2xl shadow-md border p-6 space-y-6 bg-white">
-        <div className="space-y-1 text-center">
-          <h1 className="text-2xl font-semibold">Log in to Brixel</h1>
-          <p className="text-sm text-gray-500">Welcome back! 👋</p>
-        </div>
+    <div className="mx-auto max-w-sm py-10">
+      <h1 className="text-xl font-semibold mb-4">Log in to Brixel</h1>
+
+      {/* Turn off form-level autofill */}
+      <form onSubmit={onSubmit} autoComplete="off">
+        <label className="block text-sm mb-1">Email</label>
+        <input
+          type="email"
+          name="email"                // fine, but controlled value prevents default fill
+          inputMode="email"
+          autoComplete="username"     // explicit hint (prevents random passwords)
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full rounded border p-2 mb-3"
+          placeholder="you@brixel.uk"
+        />
+
+        <label className="block text-sm mb-1">Password</label>
+        <input
+          type="password"
+          name="current-password"     // avoids Chrome reusing wrong saved creds
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full rounded border p-2 mb-3"
+          placeholder="••••••••"
+        />
+
+        {err && <p className="text-sm text-red-600 mb-2">{err}</p>}
 
         <button
-          onClick={() => signIn("google", { callbackUrl: "/me" })}
-          className="w-full border rounded-lg px-4 py-2 hover:bg-gray-50 transition"
+          type="submit"
+          disabled={loading}
+          className="w-full rounded bg-emerald-600 text-white py-2 hover:bg-emerald-700 disabled:opacity-60"
         >
-          <span className="inline-flex items-center gap-2">Continue with Google</span>
+          {loading ? "Signing in…" : "Sign in"}
         </button>
-
-        <div className="flex items-center gap-3 text-xs text-gray-400">
-          <div className="h-px flex-1 bg-gray-200" />
-          <span>or</span>
-          <div className="h-px flex-1 bg-gray-200" />
-        </div>
-
-        <form onSubmit={onSubmit} className="space-y-3">
-          <label className="block text-sm">
-            Email
-            <input
-              className="mt-1 w-full border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-400"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="username"
-              required
-            />
-          </label>
-
-          <label className="block text-sm">
-            Password
-            <div className="mt-1 relative">
-              <input
-                className="w-full border rounded-md px-3 py-2 pr-10 outline-none focus:ring-2 focus:ring-emerald-400"
-                type={show ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShow(!show)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500"
-              >
-                {show ? "Hide" : "Show"}
-              </button>
-            </div>
-          </label>
-
-          {error && <p className="text-sm text-red-600">{error}</p>}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-md px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
-          >
-            {loading ? "Signing in…" : "Sign in with Email"}
-          </button>
-        </form>
-
-        <p className="text-sm text-center text-gray-600">
-          New to Brixel? <Link href="/auth/signup" className="underline">Create an account</Link>
-        </p>
-      </div>
-    </main>
+      </form>
+    </div>
   );
 }
