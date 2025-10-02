@@ -1,99 +1,106 @@
 "use client";
-
-import { useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { signIn } from "next-auth/react";
-import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
-export default function SignInPage() {
+export const dynamic = "force-dynamic";
+
+function Banner({ callbackUrl }: { callbackUrl: string }) {
+  const show = useMemo(() => callbackUrl?.startsWith("/quote"), [callbackUrl]);
+  if (!show) return null;
+  return (
+    <div className="rounded-lg border border-amber-200 bg-amber-50 text-amber-900 px-3 py-2 text-sm">
+      Please sign in or create an account to get your instant estimate.
+    </div>
+  );
+}
+
+function SignInInner() {
+  const sp = useSearchParams();
+  const callbackUrl = sp.get("callbackUrl") || "/home";
+
   const [email, setEmail] = useState("homeowner@brixel.uk");
-  const [password, setPassword] = useState("Password123!");
-  const [show, setShow] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [password, setPassword] = useState("test123");
+  const [loading, setLoading] = useState<"" | "google" | "email">("");
 
-  async function onSubmit(e: React.FormEvent) {
+  async function onEmail(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-    const res = await signIn("credentials", {
-      redirect: true,
-      callbackUrl: "/me",   // go to role-aware area after login
-      email,
-      password,
-    });
-    if (!res?.ok) setError("Invalid email or password");
+    setLoading("email");
+    const res = await signIn("credentials", { redirect: false, email, password, callbackUrl });
+    setLoading("");
+    if (res?.ok) window.location.href = callbackUrl;
+    else alert(res?.error || "Sign-in failed");
+  }
+
+  function onGoogle() {
+    setLoading("google");
+    signIn("google", { callbackUrl });
   }
 
   return (
-    <main className="min-h-[70vh] flex items-center justify-center p-6">
-      <div className="w-full max-w-md rounded-2xl shadow-md border p-6 space-y-6 bg-white">
-        <div className="space-y-1 text-center">
-          <h1 className="text-2xl font-semibold">Log in to Brixel</h1>
-          <p className="text-sm text-gray-500">Welcome back! 👋</p>
-        </div>
+    <main className="min-h-[70vh] grid place-items-center px-4 bg-gray-50">
+      <div className="w-full max-w-md bg-white rounded-2xl border p-6 shadow-sm">
+        <h1 className="text-xl font-semibold text-center">Log in to Brixel</h1>
+        <p className="text-center text-slate-600 mt-1">Welcome back! 👋</p>
+
+        <div className="mt-4"><Banner callbackUrl={callbackUrl} /></div>
 
         <button
-          onClick={() => signIn("google", { callbackUrl: "/me" })}
-          className="w-full border rounded-lg px-4 py-2 hover:bg-gray-50 transition"
+          onClick={onGoogle}
+          className="w-full mt-6 rounded-lg border px-4 py-2 hover:bg-slate-50"
+          disabled={loading==="google"}
         >
-          <span className="inline-flex items-center gap-2">Continue with Google</span>
+          {loading==="google" ? "Opening Google…" : "Continue with Google"}
         </button>
 
-        <div className="flex items-center gap-3 text-xs text-gray-400">
-          <div className="h-px flex-1 bg-gray-200" />
-          <span>or</span>
-          <div className="h-px flex-1 bg-gray-200" />
+        <div className="relative my-5">
+          <div className="absolute inset-0 flex items-center"><div className="w-full border-t" /></div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-white px-2 text-slate-500">or</span>
+          </div>
         </div>
 
-        <form onSubmit={onSubmit} className="space-y-3">
-          <label className="block text-sm">
-            Email
+        <form onSubmit={onEmail} className="space-y-3">
+          <div>
+            <label className="text-sm">Email</label>
             <input
-              className="mt-1 w-full border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-400"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="username"
-              required
+              type="email" required value={email}
+              onChange={e=>setEmail(e.target.value)}
+              className="mt-1 w-full rounded-lg border px-3 py-2"
+              placeholder="homeowner@brixel.uk"
             />
-          </label>
-
-          <label className="block text-sm">
-            Password
-            <div className="mt-1 relative">
-              <input
-                className="w-full border rounded-md px-3 py-2 pr-10 outline-none focus:ring-2 focus:ring-emerald-400"
-                type={show ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShow(!show)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500"
-              >
-                {show ? "Hide" : "Show"}
-              </button>
-            </div>
-          </label>
-
-          {error && <p className="text-sm text-red-600">{error}</p>}
-
+          </div>
+          <div>
+            <label className="text-sm">Password</label>
+            <input
+              type="password" required value={password}
+              onChange={e=>setPassword(e.target.value)}
+              className="mt-1 w-full rounded-lg border px-3 py-2"
+              placeholder="••••••••"
+            />
+          </div>
           <button
             type="submit"
-            disabled={loading}
-            className="w-full rounded-md px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
+            className="w-full rounded-lg bg-emerald-600 text-white px-4 py-2 hover:bg-emerald-700"
+            disabled={loading==="email"}
           >
-            {loading ? "Signing in…" : "Sign in with Email"}
+            {loading==="email" ? "Signing in…" : "Sign in with Email"}
           </button>
         </form>
 
-        <p className="text-sm text-center text-gray-600">
-          New to Brixel? <Link href="/auth/signup" className="underline">Create an account</Link>
+        <p className="text-center text-sm mt-4">
+          New to Brixel?{" "}
+          <a href="/auth/signup" className="text-emerald-700 hover:underline">Create an account</a>
         </p>
       </div>
     </main>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<main className="min-h-[50vh] grid place-items-center">Loading…</main>}>
+      <SignInInner />
+    </Suspense>
   );
 }
