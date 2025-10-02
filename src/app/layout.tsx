@@ -1,20 +1,18 @@
-import Providers from "@/components/Providers";
-import MyAreaFab from "@/components/MyAreaFab";
 import "./globals.css";
+import type { Metadata } from "next";
+import { Toaster } from "sonner";
+import SessionProviderWrapper from "@/components/providers/Session";
 
-export const metadata = {
-  title: "Brixel.uk",
-  description: "Home improvements made simple",
-};
+export const metadata: Metadata = { title: "KAB" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-white">
-        <Providers>
-          <main>{children}</main>
-          <MyAreaFab />
-        </Providers>
+      <body>
+        <SessionProviderWrapper>
+          {children}
+        </SessionProviderWrapper>
+        <Toaster richColors />
       </body>
     </html>
   );
