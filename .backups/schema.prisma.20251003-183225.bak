@@ -8,10 +8,8 @@ datasource db {
 }
 
 enum Role {
-  ADMIN
-  BUILDER
-  HOMEOWNER
   USER
+  ADMIN
 }
 
 enum LeadStatus {
@@ -30,9 +28,9 @@ enum Urgency {
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
-  password      String?
+  password  String?
   name          String?
-  role          Role      @default(HOMEOWNER)
+  role      Role     @default(HOMEOWNER)
   isBlocked     Boolean   @default(false)
   blockedAt     DateTime?
   blockedReason String?
