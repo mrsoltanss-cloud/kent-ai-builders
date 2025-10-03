@@ -60,9 +60,6 @@ model Lead {
   status      LeadStatus @default(PENDING)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-  description String?
-  photos      Json?
-  details     Json?
 }
 
 model AuditLog {
