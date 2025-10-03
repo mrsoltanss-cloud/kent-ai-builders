@@ -3,47 +3,72 @@
 import { useEffect } from "react";
 
 /**
- * Hides "big emoji-only" elements (e.g., 🤝 ✅ etc. rendered at very large sizes)
- * and centers the text in their parent container so cards look clean.
+ * Remove oversized emoji icons next to known feature labels and center their text.
+ * Works on hydration & route changes via a MutationObserver.
  */
 export default function ClientBoot() {
   useEffect(() => {
-    const isEmojiOnly = (t: string | null | undefined) => {
-      if (!t) return false;
-      const s = t.trim();
-      if (!s) return false;
-      // Treat as emoji-only if all graphemes are pictographic (covers most emoji)
-      // and there are no letters/digits.
+    const LABELS = [
+      "handshake",
+      "guaranteed",
+      "team on site",
+      "verified",
+    ];
+
+    const hasEmoji = (s: string) => {
       try {
-        const re = /\p{Extended_Pictographic}/u;
-        // Split into Unicode code points
-        const chars = Array.from(s);
-        return chars.every((ch) => re.test(ch));
+        return /\p{Extended_Pictographic}/u.test(s);
       } catch {
-        // Fallback: simple range hits most emoji
-        return /^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]+$/u.test(s);
+        return /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/u.test(s);
       }
     };
 
-    const candidates = Array.from(
-      document.querySelectorAll<HTMLElement>("h1, h2, h3, div, span")
-    );
+    const hideIconAndCenter = (root: ParentNode | Document) => {
+      const all = Array.from(root.querySelectorAll<HTMLElement>("h1, h2, h3, div, span, p"));
+      for (const el of all) {
+        const txt = (el.textContent || "").trim().toLowerCase();
+        if (!txt) continue;
+        if (!LABELS.includes(txt)) continue;
 
-    for (const el of candidates) {
-      const txt = el.textContent;
-      const fs = parseFloat(getComputedStyle(el).fontSize || "0");
-      // Consider "big" ≥ 40px
-      if (fs >= 40 && isEmojiOnly(txt)) {
-        el.style.display = "none";
-        const parent = el.parentElement as HTMLElement | null;
-        if (parent) {
-          parent.style.textAlign = "center";
-          // Also tidy extra spacing that was meant for the icon
-          parent.style.alignItems = "center";
-          parent.style.justifyContent = "center";
+        // Center the tile/card that holds this label
+        const card = (el.closest("div,section,article,li") as HTMLElement) ?? el.parentElement;
+        if (card) {
+          card.style.textAlign = "center";
+          card.style.display = card.style.display || "flex";
+          card.style.flexDirection = "column";
+          card.style.alignItems = "center";
+          card.style.justifyContent = card.style.justifyContent || "center";
+
+          // Hide any sibling that looks like a big emoji
+          const kids = Array.from(card.children) as HTMLElement[];
+          for (const kid of kids) {
+            if (kid === el) continue;
+            const fs = parseFloat(getComputedStyle(kid).fontSize || "0");
+            const text = (kid.textContent || "").trim();
+            if ((fs >= 28 && hasEmoji(text)) || hasEmoji(text) && text.length <= 3) {
+              kid.style.display = "none";
+            }
+          }
         }
       }
-    }
+    };
+
+    // Run immediately
+    hideIconAndCenter(document);
+
+    // Watch future updates (hydration / route changes)
+    const obs = new MutationObserver((mut) => {
+      for (const m of mut) {
+        if (m.type === "childList") {
+          m.addedNodes.forEach((n) => {
+            if (n.nodeType === 1) hideIconAndCenter(n as Element);
+          });
+        }
+      }
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
+
+    return () => obs.disconnect();
   }, []);
 
   return null;
