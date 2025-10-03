@@ -1,4 +1,8 @@
 import QuoteForm from "./QuoteForm";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/src/lib/authOptions";
+import { redirect } from "next/navigation";
+
 
 export const metadata = {
   title: "Get Your Quote | Brixel",

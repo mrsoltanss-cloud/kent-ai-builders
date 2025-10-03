@@ -12,8 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </SessionProviderWrapper>
         <Toaster richColors />
-      
-      </body>
+</body>
     </html>
   );
 }
