@@ -1,3 +1,4 @@
+import ClientBoot from "@/components/ClientBoot";
 import "./globals.css";
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
@@ -9,7 +10,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <SessionProviderWrapper>
-          {children}
+          <ClientBoot />
+        {children}
         </SessionProviderWrapper>
         <Toaster richColors />
 </body>
