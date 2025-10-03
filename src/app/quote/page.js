@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import QuoteForm from "./QuoteForm";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../lib/authOptions";
