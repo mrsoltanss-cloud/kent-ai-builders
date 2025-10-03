@@ -1,24 +1,31 @@
-import { NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
+import { NextResponse } from "next/server";
+import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
-export const runtime = "nodejs"
-export const dynamic = "force-dynamic"
+const prisma = new PrismaClient();
 
 export async function POST(req: Request) {
   try {
-    const { name, email } = await req.json().catch(() => ({}))
-    if (!email) return NextResponse.json({ ok: false, error: "Email required" }, { status: 400 })
+    const { email, name, password } = await req.json();
 
-    // Create or return existing user; default role is USER
-    const user = await prisma.user.upsert({
-      where: { email },
-      update: { name: name ?? undefined },
-      create: { email, name: name ?? null, role: "USER" },
-      select: { id: true, email: true, name: true, role: true },
-    })
+    if (!email || !password) {
+      return NextResponse.json({ message: "Email and password are required." }, { status: 400 });
+    }
 
-    return NextResponse.json({ ok: true, user })
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message ?? "Signup failed" }, { status: 500 })
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      return NextResponse.json({ message: "An account with this email already exists." }, { status: 409 });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+
+    await prisma.user.create({
+      data: { email, name: name || null, password: hash },
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    return NextResponse.json({ message: "Unexpected error creating account." }, { status: 500 });
   }
 }

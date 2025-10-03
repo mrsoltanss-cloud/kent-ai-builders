@@ -1,110 +1,114 @@
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function SignUpPage() {
-  const [name, setName] = useState("Home Owner");
+  const router = useRouter();
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [password, setPassword] = useState("");
-  const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
-  async function onSubmit(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErr(null);
     setLoading(true);
-    setError(null);
-
-    const res = await fetch("/api/auth/signup", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
-    });
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data?.error ?? "Could not create account");
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, name, password }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.message || "Failed to create account.");
+      }
+      router.push("/auth/signin?created=1");
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // auto-login after sign up
-    const login = await signIn("credentials", { redirect: false, email, password });
-    setLoading(false);
-    if (login?.ok) window.location.href = "/";
-    else setError("Account created but sign-in failed—try logging in.");
-  }
+  };
 
   return (
-    <main className="min-h-[70vh] flex items-center justify-center p-6">
-      <div className="w-full max-w-md rounded-2xl shadow-md border p-6 space-y-6 bg-white">
-        <div className="space-y-1 text-center">
-          <h1 className="text-2xl font-semibold">Create your account</h1>
-          <p className="text-sm text-gray-500">It only takes a minute.</p>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-emerald-100 flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white/90 backdrop-blur rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
+        <header className="px-8 pt-8 text-center">
+          <div className="inline-flex items-center gap-2 text-3xl font-extrabold text-gray-900">
+            <span className="text-4xl">🚀</span>
+            <span>Create your account</span>
+          </div>
+          <p className="mt-2 text-sm text-gray-500">
+            Join <span className="font-semibold">Brixel</span> — it takes less than a minute.
+          </p>
+        </header>
 
-        <form onSubmit={onSubmit} className="space-y-3">
-          <label className="block text-sm">
-            Name
+        <form onSubmit={handleSubmit} className="px-8 pt-6 pb-8 space-y-5">
+          {err && (
+            <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {err}
+            </div>
+          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Full name</label>
             <input
-              className="mt-1 w-full border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-400"
+              type="text"
+              required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              required
+              placeholder="Jane Builder"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
             />
-          </label>
+          </div>
 
-          <label className="block text-sm">
-            Email
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input
-              className="mt-1 w-full border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-400"
               type="email"
+              required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              autoComplete="username"
-              required
+              placeholder="you@brixel.uk"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
             />
-          </label>
+          </div>
 
-          <label className="block text-sm">
-            Password
-            <div className="mt-1 relative">
-              <input
-                className="w-full border rounded-md px-3 py-2 pr-10 outline-none focus:ring-2 focus:ring-emerald-400"
-                type={show ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 8 characters"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShow(!show)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500"
-              >
-                {show ? "Hide" : "Show"}
-              </button>
-            </div>
-          </label>
-
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="At least 8 characters"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
+            />
+          </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-md px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
+            className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl shadow-md transition"
           >
-            {loading ? "Creating account…" : "Create account"}
+            {loading ? "Creating your account…" : "Create account"}
           </button>
-        </form>
 
-        <p className="text-sm text-center text-gray-600">
-          Already have an account?{" "}
-          <Link href="/auth/signin" className="underline">Sign in</Link>
-        </p>
+          <p className="text-sm text-center text-gray-600">
+            Already have an account?{" "}
+            <Link href="/auth/signin" className="text-emerald-700 font-semibold hover:underline">
+              Sign in
+            </Link>
+          </p>
+
+          <div className="pt-4 text-center text-xs text-gray-500">
+            ✅ No spam • Cancel anytime • Privacy-first
+          </div>
+        </form>
       </div>
-    </main>
+    </div>
   );
 }
