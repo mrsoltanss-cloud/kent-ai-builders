@@ -1,3 +1,4 @@
+import FooterBuild from "@/components/FooterBuild";
 import ClientBoot from "@/components/ClientBoot";
 import Script from "next/script";
 import "./globals.css";
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SessionProviderWrapper>
           <ClientBoot />
         {children}
+        <FooterBuild />
         </SessionProviderWrapper>
         <Toaster richColors />
 </body>

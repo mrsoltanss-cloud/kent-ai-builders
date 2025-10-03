@@ -1,59 +1,42 @@
 "use client";
-
 import { useEffect, useMemo, useRef, useState } from "react";
 
-function hourBand(now = new Date()) {
-  // local time banding
-  const h = now.getHours();
-  // Peak: 7–10, 12–14, 17–21
-  if ((h >= 7 && h < 10) || (h >= 12 && h < 14) || (h >= 17 && h < 21)) return "peak";
-  // Shoulder: 10–12, 14–17
-  if ((h >= 10 && h < 12) || (h >= 14 && h < 17)) return "shoulder";
-  // Off-peak: 21–7
+function hourBand(d=new Date()){
+  const h=d.getHours();
+  if ((h>=7 && h<10) || (h>=12 && h<14) || (h>=17 && h<21)) return "peak";
+  if ((h>=10 && h<12) || (h>=14 && h<17)) return "shoulder";
   return "off";
 }
-
-function bandRange(band: "peak" | "shoulder" | "off") {
-  if (band === "peak") return [300, 500] as const;
-  if (band === "shoulder") return [150, 300] as const;
-  return [50, 150] as const;
+function bandRange(b:"peak"|"shoulder"|"off"){
+  if(b==="peak") return [300,500] as const;
+  if(b==="shoulder") return [150,300] as const;
+  return [50,150] as const;
 }
+const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
 
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n));
-}
+export default function LiveCounter({ className="" }: { className?: string }){
+  const band = useMemo(()=>hourBand(),[]);
+  const [min,max] = bandRange(band);
+  const seed = useMemo(()=>{
+    const mid=(min+max)/2;
+    return clamp(Math.round(mid + (Math.random()-0.5)*(max-min)*0.2),min,max);
+  },[min,max]);
+  const [value,setValue]=useState(seed);
+  const t=useRef<number|undefined>();
 
-export default function LiveCounter({ className = "" }: { className?: string }) {
-  const band = useMemo(() => hourBand(), []);
-  const [min, max] = bandRange(band);
-  const seed = useMemo(() => {
-    // start somewhere sensible in band
-    const start = Math.floor((min + max) / 2 + (Math.random() - 0.5) * (max - min) * 0.2);
-    return clamp(start, min, max);
-  }, [min, max]);
-
-  const [value, setValue] = useState(seed);
-  const timer = useRef<number | null>(null);
-
-  useEffect(() => {
-    function tick() {
-      // random walk: tiny steps, bias back toward band center
-      const center = (min + max) / 2;
-      const toCenter = (center - value) * 0.05; // gentle pull
-      const noise = (Math.random() - 0.5) * (max - min) * 0.02; // small wiggle
-      const step = toCenter + noise;
-      setValue(v => clamp(Math.round(v + step), min, max));
-
-      // 1–2s cadence
-      const nextIn = 1000 + Math.random() * 1000;
-      timer.current = window.setTimeout(tick, nextIn) as unknown as number;
-    }
-    timer.current = window.setTimeout(tick, 1000) as unknown as number;
-    return () => {
-      if (timer.current) window.clearTimeout(timer.current);
+  useEffect(()=>{
+    const center=(min+max)/2;
+    const tick=()=>{
+      setValue(v=>{
+        const pull=(center - v)*0.05;           // gentle pull to center
+        const noise=(Math.random()-0.5)*(max-min)*0.02; // small wiggle
+        return clamp(Math.round(v + pull + noise), min, max);
+      });
+      t.current = window.setTimeout(tick, 1000 + Math.random()*1000);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [min, max]);
+    t.current = window.setTimeout(tick, 1000);
+    return ()=> t.current && clearTimeout(t.current);
+  },[min,max]);
 
   return (
     <div className={className}>
