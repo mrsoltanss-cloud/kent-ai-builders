@@ -1,31 +1,34 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-
-const prisma = new PrismaClient();
 
 export async function POST(req: Request) {
   try {
-    const { email, name, password } = await req.json();
+    const { email, password, name } = await req.json();
 
     if (!email || !password) {
-      return NextResponse.json({ message: "Email and password are required." }, { status: 400 });
+      return NextResponse.json({ error: "Email and password required" }, { status: 400 });
     }
 
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
     if (existing) {
-      return NextResponse.json({ message: "An account with this email already exists." }, { status: 409 });
+      return NextResponse.json({ error: "User already exists" }, { status: 409 });
     }
 
-    const hash = await bcrypt.hash(password, 10);
-
-    await prisma.user.create({
-      data: { email, name: name || null, password: hash },
+    const hash = await bcrypt.hash(password, 12);
+    const user = await prisma.user.create({
+      data: {
+        email: email.toLowerCase().trim(),
+        name: name ?? null,
+        password: hash,
+        // role defaults via schema; set here if you want: role: 'HOMEOWNER'
+      },
+      select: { id:true, email:true, name:true },
     });
 
-    return NextResponse.json({ ok: true });
-  } catch (e) {
-    console.error(e);
-    return NextResponse.json({ message: "Unexpected error creating account." }, { status: 500 });
+    return NextResponse.json({ ok: true, user });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: "Signup failed" }, { status: 500 });
   }
 }

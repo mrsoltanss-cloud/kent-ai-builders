@@ -1,114 +1,68 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { signIn } from "next-auth/react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function SignUpPage() {
   const router = useRouter();
+  const params = useSearchParams();
+  const callbackUrl = params.get("callbackUrl") || "/quote";
+
   const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
+  const [name, setName]   = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setErr(null);
-    setLoading(true);
+    setLoading(true); setMsg(null);
     try {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name, password }),
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, password, name }),
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data?.message || "Failed to create account.");
-      }
-      router.push("/auth/signin?created=1");
-    } catch (e: any) {
-      setErr(e.message);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Signup failed");
+
+      // auto-login
+      const si = await signIn("credentials", { email, password, callbackUrl });
+      // NextAuth handles redirect; if not, push manually:
+      setTimeout(()=>router.push(callbackUrl), 300);
+    } catch (err:any) {
+      setMsg(err.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-emerald-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white/90 backdrop-blur rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
-        <header className="px-8 pt-8 text-center">
-          <div className="inline-flex items-center gap-2 text-3xl font-extrabold text-gray-900">
-            <span className="text-4xl">🚀</span>
-            <span>Create your account</span>
-          </div>
-          <p className="mt-2 text-sm text-gray-500">
-            Join <span className="font-semibold">Brixel</span> — it takes less than a minute.
-          </p>
-        </header>
-
-        <form onSubmit={handleSubmit} className="px-8 pt-6 pb-8 space-y-5">
-          {err && (
-            <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              {err}
-            </div>
-          )}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Full name</label>
-            <input
-              type="text"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Jane Builder"
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@brixel.uk"
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="At least 8 characters"
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl shadow-md transition"
-          >
-            {loading ? "Creating your account…" : "Create account"}
-          </button>
-
-          <p className="text-sm text-center text-gray-600">
-            Already have an account?{" "}
-            <Link href="/auth/signin" className="text-emerald-700 font-semibold hover:underline">
-              Sign in
-            </Link>
-          </p>
-
-          <div className="pt-4 text-center text-xs text-gray-500">
-            ✅ No spam • Cancel anytime • Privacy-first
-          </div>
-        </form>
-      </div>
-    </div>
+    <main className="mx-auto max-w-md px-4 py-10">
+      <h1 className="text-2xl font-extrabold">Create your account</h1>
+      <p className="text-gray-600 mt-1">It’s free and only takes a minute.</p>
+      <form onSubmit={onSubmit} className="mt-6 space-y-3">
+        <div>
+          <label className="block text-sm font-medium">Name (optional)</label>
+          <input value={name} onChange={(e)=>setName(e.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Email</label>
+          <input type="email" required value={email} onChange={(e)=>setEmail(e.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Password</label>
+          <input type="password" required value={password} onChange={(e)=>setPassword(e.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" />
+        </div>
+        {msg && <p className="text-red-600 text-sm">{msg}</p>}
+        <button disabled={loading} className="w-full rounded-lg bg-emerald-600 text-white px-4 py-2 font-semibold disabled:opacity-50">
+          {loading ? "Creating..." : "Create account"}
+        </button>
+      </form>
+      <p className="mt-3 text-sm text-gray-600">
+        Already have an account? <a href={`/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`} className="text-emerald-700 underline">Sign in</a>
+      </p>
+    </main>
   );
 }

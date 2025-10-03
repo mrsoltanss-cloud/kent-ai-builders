@@ -14,12 +14,7 @@ export default function SignInPage() {
     e.preventDefault();
     setErr(null);
     setLoading(true);
-    const res = await signIn("credentials", {
-      redirect: true,
-      email,
-      password,
-      callbackUrl: "/",
-    });
+    const res = await signIn("credentials", { email, password, callbackUrl: "/quote" });
     if (res?.error) setErr("Invalid email or password.");
     setLoading(false);
   };

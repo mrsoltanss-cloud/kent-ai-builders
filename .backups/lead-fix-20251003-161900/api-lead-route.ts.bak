@@ -1,0 +1,34 @@
+import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOptions";
+
+export async function POST(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    const body = await req.json();
+    const { service, postcode, urgency, details } = body || {};
+
+    if (!service || !postcode) {
+      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+    }
+
+    // If signed in, link to user; otherwise nullable
+    const userId = (session?.user as any)?.id ?? undefined;
+
+    const lead = await prisma.lead.create({
+      data: {
+        service,
+        postcode,
+        urgency,
+        userId,
+        details: details ?? null,
+      } as any,
+    });
+
+    return NextResponse.json({ id: lead.id }, { status: 200 });
+  } catch (e: any) {
+    console.error(e);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
+}
