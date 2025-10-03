@@ -1,38 +1,26 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { PrismaClient } from "@prisma/client";
 import { compare } from "bcryptjs";
-import prisma from "@/lib/prisma";
+
+const prisma = new PrismaClient();
 
 export const authOptions: NextAuthOptions = {
-  pages: { signIn: "/auth/signin", error: "/auth/error" },
   session: { strategy: "jwt" },
   providers: [
     CredentialsProvider({
-      name: "Email & Password",
+      name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const email = credentials?.email?.toLowerCase()?.trim();
-        const password = credentials?.password ?? "";
+        const email = credentials?.email?.toLowerCase()?.trim() || "";
+        const password = credentials?.password || "";
         if (!email || !password) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { email },
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            password: true,
-            role: true,
-            isBlocked: true,
-          },
-        });
-
-        if (!user) return null;
-        if (user.isBlocked) return null;
-        if (!user.password) return null; // guard for TS + runtime
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user || !user.password) return null;
 
         const ok = await compare(password, user.password);
         if (!ok) return null;
@@ -40,27 +28,27 @@ export const authOptions: NextAuthOptions = {
         return {
           id: user.id,
           email: user.email,
-          name: user.name ?? undefined,
-          role: user.role,
+          name: user.name ?? user.email,
+          role: (user as any).role ?? "HOMEOWNER",
         } as any;
       },
     }),
   ],
+  pages: { signIn: "/auth/signin" },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
         token.id = (user as any).id;
-        token.role = (user as any).role ?? "HOMEOWNER";
+        (token as any).role = (user as any).role ?? "HOMEOWNER";
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).id = token.id;
-        (session.user as any).role = token.role ?? "HOMEOWNER";
+        (session.user as any).id = token.id as string;
+        (session.user as any).role = (token as any).role ?? "HOMEOWNER";
       }
       return session;
     },
   },
-  secret: process.env.NEXTAUTH_SECRET,
 };
