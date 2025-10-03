@@ -51,10 +51,10 @@ export default function TrustSection() {
 
           {/* Emoji tiles: hide on very small screens */}
           <div className="hidden xs:grid grid-cols-2 gap-3 sm:gap-4 md:contents">
-            <Tile title="Handshake" emoji="🤝" />
-            <Tile title="Team on site" emoji="👷‍♂️" />
-            <Tile title="Guaranteed" emoji="✅" />
-            <Tile title="Verified" emoji="🔎" />
+            <Tile title="Handshake" />
+            <Tile title="Team on site" />
+            <Tile title="Guaranteed" />
+            <Tile title="Verified" />
           </div>
         </div>
       </div>
@@ -64,18 +64,18 @@ export default function TrustSection() {
 
 function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <div className="rounded-xl sm:rounded-2xl bg-white/5 border border-white/10 p-3 sm:p-4 text-center">
+    <div className="rounded-xl sm:rounded-2xl bg-white/5 border border-white/10 p-3 sm:p-4 text-center flex items-center justify-center">
       <div className="text-lg sm:text-2xl font-extrabold text-white">{value}</div>
       <div className="text-[10px] sm:text-xs uppercase tracking-wide text-gray-300">{label}</div>
     </div>
   );
 }
 
-function Tile({ title, emoji }: { title: string; emoji: string }) {
+function Tile({ title, }: { title: string; }) {
   return (
     <div className="aspect-[4/3] rounded-2xl sm:rounded-3xl bg-gradient-to-br from-white/5 to-white/0 border border-white/10 shadow-inner flex items-center justify-center">
       <div className="text-center">
-        <div className="text-3xl sm:text-4xl">{emoji}</div>
+        
         <div className="mt-1 sm:mt-2 text-xs sm:text-sm text-gray-200">{title}</div>
       </div>
     </div>
