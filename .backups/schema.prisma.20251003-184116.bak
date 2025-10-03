@@ -8,10 +8,9 @@ datasource db {
 }
 
 enum Role {
-  ADMIN
-  BUILDER
   HOMEOWNER
-  USER
+  BUILDER
+  ADMIN
 }
 
 enum LeadStatus {

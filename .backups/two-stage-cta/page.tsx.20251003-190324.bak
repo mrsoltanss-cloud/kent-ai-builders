@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import ServiceMicroQuestions from "@/components/ServiceMicroQuestions";
 import LiveNowBadge from "@/components/LiveNowBadge";
-import TwoStageEstimateButton from "@/components/TwoStageEstimateButton";
 
 type Step = "service" | "postcode" | "timing" | "estimate";
 
@@ -281,7 +280,13 @@ export default function QuotePage() {
                   Back
                 </button>
                 <div className="flex-1" />
-                <TwoStageEstimateButton className="h-10 px-4 rounded-md bg-emerald-600 text-white" />
+                <button
+                  type="button"
+                  onClick={submitLead}
+                  className="h-10 px-4 rounded-md bg-emerald-600 text-white"
+                >
+                  Submit & get estimate
+                </button>
               </div>
             </div>
           )}

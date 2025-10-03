@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 import QuickLinksCategories from "../components/QuickLinksCategories";
 import MinimalTrustPanel from "../components/MinimalTrustPanel";
