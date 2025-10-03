@@ -1,5 +1,11 @@
-export { default } from "next-auth/middleware"
+export { default } from "next-auth/middleware";
 
 export const config = {
-  matcher: ["/home/:path*", "/trade/:path*", "/quote/:path*", "/admin/:path*"],
-}
+  matcher: [
+    "/quote",
+    "/quote/:path*",
+    // add more protected areas as needed:
+    // "/homeowner/:path*",
+    // "/trade/:path*",
+  ],
+};
