@@ -50,7 +50,7 @@ export default function Home() {
   <div className="mx-auto max-w-6xl px-4 h-16 flex items-center justify-between">
     {/* Left: brand / logo */}
     <div className="flex items-center gap-2">
-      
+      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white text-xs font-bold">✓</span>
       <Link href="/" className="font-semibold text-base">Brixel</Link>
     </div>
 
@@ -229,7 +229,7 @@ export default function Home() {
             const r = reviews[i];
             return (
               <div key={i} className="rounded-3xl border p-4 sm:p-6 hover:border-teal-500">
-                
+                <div className="text-yellow-500">★★★★★</div>
                 <p className="mt-2 sm:mt-3 text-gray-800 text-sm sm:text-base">“{r.quote}”</p>
                 <p className="mt-2 sm:mt-3 text-xs sm:text-sm text-gray-500">{r.name}</p>
               </div>
