@@ -1,3 +1,4 @@
+import HomeAiShowcase from "@/components/home/HomeAiShowcase";
 /* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 import QuickLinksCategories from "../components/QuickLinksCategories";
@@ -240,26 +241,10 @@ export default function Home() {
       </section>
 
       {/* GUIDES */}
-      <section className="mx-auto max-w-6xl px-4 sm:px-6 pb-12 sm:pb-14">
-        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-center text-teal-600">Cost guides & advice</h2>
-        <div className="mt-6 sm:mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-          {[
-            { href: "/guides/repointing-cost-kent", title: "How much does repointing cost in Kent?", img: "/images/guide-repointing.jpg" },
-            { href: "/guides/roof-repair-cost-kent", title: "Roof repair costs explained", img: "/images/guide-roof.jpg" },
-            { href: "/guides/loft-conversion-cost-kent", title: "Loft conversion costs (2025)", img: "/images/guide-loft.jpg" },
-          ].map((g, i) => (
-            <Link key={i} href={g.href} className="rounded-3xl border hover:shadow-md hover:border-teal-500 transition overflow-hidden">
-              <div className="relative h-36 sm:h-40">
-                <Image src={g.img} alt={g.title} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" />
-              </div>
-              <div className="p-4 sm:p-5">
-                <h3 className="font-semibold text-sm sm:text-base">{g.title}</h3>
-                <p className="text-xs sm:text-sm text-teal-600 mt-2">Read more →</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
+      
+{/* AI Showcase (replaces Cost guides block) */}
+<section><HomeAiShowcase/></section>
+
 
       {/* ACTION CARDS */}
       <section className="mx-auto max-w-6xl px-4 sm:px-6 pb-12">
