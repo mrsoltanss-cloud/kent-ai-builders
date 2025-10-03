@@ -1,6 +1,6 @@
 import QuoteForm from "./QuoteForm";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/src/lib/authOptions";
+import { authOptions } from "../../lib/authOptions";
 import { redirect } from "next/navigation";
 
 
