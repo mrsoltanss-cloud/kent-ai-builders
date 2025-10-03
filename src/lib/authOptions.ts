@@ -1,53 +1,46 @@
-import type { NextAuthOptions } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { compare } from "bcryptjs";
-import prisma from "@/lib/prisma";
+import NextAuth, { NextAuthOptions } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
+import prisma from "@/src/lib/prisma";
 
 export const authOptions: NextAuthOptions = {
-  pages: {
-    signIn: "/auth/signin",
-    error: "/auth/error"
-  },
-  session: { strategy: "jwt" },
+  adapter: PrismaAdapter(prisma),
   providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
     CredentialsProvider({
-      name: "Email & Password",
+      name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const email = credentials?.email?.toLowerCase()?.trim();
-        const password = credentials?.password ?? "";
-        if (!email || !password) return null;
+        if (!credentials?.email || !credentials?.password) return null;
 
         const user = await prisma.user.findUnique({
-          where: { email },
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            password: true,
-            role: true,
-            isBlocked: true
-          }
+          where: { email: credentials.email },
         });
+        if (!user || user.isBlocked) return null;
 
-        if (!user) return null;
-        if (user.isBlocked) return null;
+        // ✅ Guard null passwords before compare
+        if (!user.password) return null;
 
-        const ok = await compare(password, user.password);
+        const ok = await compare(credentials.password, user.password);
         if (!ok) return null;
 
         return {
           id: user.id,
           email: user.email,
-          name: user.name ?? undefined,
-          role: user.role
-        } as any;
-      }
-    })
+          role: user.role,
+        };
+      },
+    }),
   ],
+  session: { strategy: "jwt" },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
@@ -62,7 +55,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).role = token.role ?? "HOMEOWNER";
       }
       return session;
-    }
+    },
   },
-  secret: process.env.NEXTAUTH_SECRET
+  secret: process.env.NEXTAUTH_SECRET,
 };
