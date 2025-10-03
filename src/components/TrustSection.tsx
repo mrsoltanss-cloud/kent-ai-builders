@@ -71,12 +71,8 @@ function Stat({ value, label }: { value: string; label: string }) {
   );
 }
 
-function Tile({ title, }: { title: string; }) {
-  return (
-    <div className="aspect-[4/3] rounded-2xl sm:rounded-3xl bg-gradient-to-br from-white/5 to-white/0 border border-white/10 shadow-inner flex items-center justify-center">
-      <div className="text-center">
-        
-        <div className="mt-1 sm:mt-2 text-xs sm:text-sm text-gray-200">{title}</div>
+function Tile(_: any) { return null; }
+</div>
       </div>
     </div>
   );
