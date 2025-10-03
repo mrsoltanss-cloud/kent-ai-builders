@@ -2,7 +2,6 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
 import SessionProviderWrapper from "@/components/providers/Session";
-
 export const metadata: Metadata = { title: "KAB" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -13,6 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </SessionProviderWrapper>
         <Toaster richColors />
+      
       </body>
     </html>
   );

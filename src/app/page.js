@@ -1,12 +1,17 @@
 "use client";
+import QuickLinksCategories from "../components/QuickLinksCategories";
+import MinimalTrustPanel from "../components/MinimalTrustPanel";
 
+import TrustSection from "../components/TrustSection";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import HeaderActions from "@/components/HeaderActions";
+import TrustHero from "@/components/TrustHero";
 
 export default function Home() {
   const suggestions = ["Leaky roof","Wall needs repointing","Kitchen renovation","Emergency plumber"];
+  <QuickLinksCategories />
   const [sIndex, setSIndex] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setSIndex(i => (i + 1) % suggestions.length), 2400);
@@ -151,7 +156,10 @@ export default function Home() {
       <section className="bg-white border-y">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10 sm:py-12">
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-center">Browse our most popular categories</h2>
-          <div className="relative mt-6 sm:mt-8">
+
+<MinimalTrustPanel />
+
+<div className="relative mt-6 sm:mt-8">
             <button aria-label="scroll left" onClick={() => scrollBy(-320)} className="hidden md:grid place-content-center absolute left-0 top-1/2 -translate-y-1/2 bg-white border rounded-full w-10 h-10 shadow">‹</button>
             <div ref={scroller} className="flex gap-4 sm:gap-5 overflow-x-auto px-2 snap-x snap-mandatory scroll-smooth">
               {cats.map((c) => (
@@ -167,7 +175,7 @@ export default function Home() {
       </section>
 
       {/* TRUST */}
-      <section className="bg-[#0f1b24] text-white">
+      <section className="bg-[#0f1b24] text-white hidden">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-14 grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10 items-center">
           <div className="grid grid-cols-2 gap-3 sm:gap-4 order-2 md:order-1">
             <div className="relative h-40 sm:h-48 md:h-64 rounded-2xl overflow-hidden bg-white/5">
@@ -210,7 +218,10 @@ export default function Home() {
       </section>
 
       {/* TESTIMONIALS */}
-      <section className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-14">
+      
+
+<TrustSection />
+<section className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-14">
         <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-center text-teal-600">What our customers say</h2>
         <div className="mt-6 sm:mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           {[0,1,2].map(offset => {
@@ -304,6 +315,7 @@ export default function Home() {
           </div>
         </div>
       </footer>
-    </main>
+      <TrustHero />
+        </main>
   );
 }
