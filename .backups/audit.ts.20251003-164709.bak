@@ -22,7 +22,7 @@ export async function audit(args: AuditArgs) {
       actorId: actorId ?? null,
       targetId: targetUserId ?? null,
       leadId: leadId ?? null,
-      meta: (meta === null || typeof meta === "undefined") ? undefined : (meta as any),
+      meta: meta ?? null,
     },
   })
 }
