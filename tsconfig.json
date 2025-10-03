@@ -15,7 +15,7 @@
     "jsx": "preserve",
     "baseUrl": ".",
     "paths": { "@/*": ["src/*"] },
-    "types": ["node", "next", "next/types", "next/image-types"]
+    "types": ["node"]           // ← removed "next/types" and "next/image-types"
   },
   "include": [
     "next-env.d.ts",
