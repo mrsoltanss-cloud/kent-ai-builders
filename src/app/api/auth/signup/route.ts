@@ -1,34 +1,28 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import bcrypt from "bcryptjs";
+import { PrismaClient, Role } from "@prisma/client";
+import { hash } from "bcryptjs";
+const prisma = new PrismaClient();
 
 export async function POST(req: Request) {
   try {
-    const { email, password, name } = await req.json();
+    const body = await req.json();
+    const email = (body?.email || "").toLowerCase().trim();
+    const password = body?.password || "";
+    const name = body?.name || null;
+    if (!email || !password) return NextResponse.json({ error: "Email and password required" }, { status: 400 });
 
-    if (!email || !password) {
-      return NextResponse.json({ error: "Email and password required" }, { status: 400 });
-    }
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) return NextResponse.json({ error: "User already exists" }, { status: 409 });
 
-    const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
-    if (existing) {
-      return NextResponse.json({ error: "User already exists" }, { status: 409 });
-    }
-
-    const hash = await bcrypt.hash(password, 12);
+    const hashed = await hash(password, 10);
     const user = await prisma.user.create({
-      data: {
-        email: email.toLowerCase().trim(),
-        name: name ?? null,
-        password: hash,
-        // role defaults via schema; set here if you want: role: 'HOMEOWNER'
-      },
-      select: { id:true, email:true, name:true },
+      data: { email, password: hashed, name, role: Role.HOMEOWNER },
+      select: { id: true, email: true, role: true },
     });
 
-    return NextResponse.json({ ok: true, user });
+    return NextResponse.json(user, { status: 201 });
   } catch (err) {
-    console.error(err);
+    console.error("Signup error:", err);
     return NextResponse.json({ error: "Signup failed" }, { status: 500 });
   }
 }

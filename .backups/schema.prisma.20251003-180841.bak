@@ -30,7 +30,7 @@ model User {
   email         String    @unique
   password  String?
   name          String?
-  role      Role     @default(HOMEOWNER)
+  role          Role      @default(USER)
   isBlocked     Boolean   @default(false)
   blockedAt     DateTime?
   blockedReason String?
