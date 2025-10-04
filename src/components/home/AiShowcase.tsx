@@ -1,8 +1,8 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
-type Result = { low:number; high:number; weeks:[number,number]; };
+type Result = { low:number; high:number; weeks:[number,number] };
 
 function estimate(q:string): Result {
   const s=q.toLowerCase();
@@ -18,8 +18,7 @@ function estimate(q:string): Result {
   ];
   let range:[number,number]=[2000,8000];
   for(const [k,r] of map){ if(s.includes(k)){ range=r; break; } }
-  // small randomization for feel
-  const n = Math.random()*0.06 - 0.03;
+  const n = Math.random()*0.06 - 0.03; // subtle variation
   const low = Math.round(range[0]*(1+n));
   const high= Math.round(range[1]*(1+n));
   const w:[number,number]=[2, Math.max(3, Math.round((high-low)/4000)+3)];
@@ -31,31 +30,77 @@ const examples = [
   "Kitchen renovation in Canterbury",
   "Roof repair in Ashford",
   "Bathroom refurb in Tunbridge Wells",
-  "House extension in Sevenoaks"
+  "House extension in Sevenoaks",
 ];
 
 export default function AiShowcase(){
   const [query,setQuery]=useState("");
-  const [index,setIndex]=useState(0);
-  const activeQuery = query || examples[index];
-  const res = useMemo(()=>estimate(activeQuery),[activeQuery]);
+  const [typed,setTyped]=useState("");         // visible typewritten text
+  const [i,setI]=useState(0);                  // which example
+  const [phase,setPhase]=useState<"typing"|"hold"|"deleting">("typing");
+
+  // Typewriter engine (disabled while user is typing)
+  const holdMs = 1000;
+  const typeSpeed = 55;     // ms per char
+  const deleteSpeed = 35;   // ms per char
+  const ticker = useRef<number | undefined>(undefined);
 
   useEffect(()=>{
-    if(query) return; // don't rotate when user typing
-    const id=setInterval(()=> setIndex(i=> (i+1)%examples.length), 3000);
-    return ()=> clearInterval(id);
-  },[query]);
+    if(query) { // pause animation while user types
+      if (ticker.current) clearTimeout(ticker.current);
+      return;
+    }
+    const full = examples[i];
+
+    function step(){
+      if (phase==="typing"){
+        if (typed.length < full.length){
+          setTyped(full.slice(0, typed.length+1));
+          ticker.current = window.setTimeout(step, typeSpeed);
+        } else {
+          setPhase("hold");
+          ticker.current = window.setTimeout(step, holdMs);
+        }
+      } else if (phase==="hold"){
+        setPhase("deleting");
+        ticker.current = window.setTimeout(step, deleteSpeed);
+      } else if (phase==="deleting"){
+        if (typed.length > 0){
+          setTyped(full.slice(0, typed.length-1));
+          ticker.current = window.setTimeout(step, deleteSpeed);
+        } else {
+          setI((i+1)%examples.length);
+          setPhase("typing");
+          ticker.current = window.setTimeout(step, typeSpeed);
+        }
+      }
+    }
+
+    ticker.current = window.setTimeout(step, typeSpeed);
+    return ()=> { if (ticker.current) clearTimeout(ticker.current); };
+    },[i,phase,typed,query]);
+
+  const activeQuery = query || typed || examples[i];
+  const res = useMemo(()=>estimate(activeQuery),[activeQuery]);
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 shadow-sm">
       <h3 className="text-xl font-bold text-gray-900">See how powerful our AI really is</h3>
       <p className="mt-1 text-gray-600">Type a job and place — we’ll preview an instant, fair estimate.</p>
 
-      <div className="mt-4 flex gap-2">
+      {/* Typewriter line (when not typing) */}
+      {!query && (
+        <div className="mt-3 text-sm text-gray-500 font-mono">
+          <span>{typed}</span>
+          <span className="ml-0.5 inline-block w-2 h-5 align-middle bg-gray-400 animate-pulse" aria-hidden />
+        </div>
+      )}
+
+      <div className="mt-3 flex gap-2">
         <input
           value={query}
           onChange={e=>setQuery(e.target.value)}
-          placeholder={examples[index]}
+          placeholder={query ? "" : "Try: " + examples[i]}
           className="w-full rounded-xl border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-300"
         />
         <Link

@@ -1,4 +1,6 @@
 "use client";
+import HomeAiShowcase from "@/components/home/HomeAiShowcase";
+/* eslint-disable react-hooks/exhaustive-deps */
 import QuickLinksCategories from "../components/QuickLinksCategories";
 import MinimalTrustPanel from "../components/MinimalTrustPanel";
 
@@ -50,7 +52,7 @@ export default function Home() {
   <div className="mx-auto max-w-6xl px-4 h-16 flex items-center justify-between">
     {/* Left: brand / logo */}
     <div className="flex items-center gap-2">
-      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white text-xs font-bold">✓</span>
+      
       <Link href="/" className="font-semibold text-base">Brixel</Link>
     </div>
 
@@ -156,8 +158,10 @@ export default function Home() {
       <section className="bg-white border-y">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10 sm:py-12">
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-center">Browse our most popular categories</h2>
-  <MinimalTrustPanel />
-          <div className="relative mt-6 sm:mt-8">
+
+<MinimalTrustPanel />
+
+<div className="relative mt-6 sm:mt-8">
             <button aria-label="scroll left" onClick={() => scrollBy(-320)} className="hidden md:grid place-content-center absolute left-0 top-1/2 -translate-y-1/2 bg-white border rounded-full w-10 h-10 shadow">‹</button>
             <div ref={scroller} className="flex gap-4 sm:gap-5 overflow-x-auto px-2 snap-x snap-mandatory scroll-smooth">
               {cats.map((c) => (
@@ -217,6 +221,7 @@ export default function Home() {
 
       {/* TESTIMONIALS */}
       
+
 <TrustSection />
 <section className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-14">
         <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-center text-teal-600">What our customers say</h2>
@@ -226,7 +231,7 @@ export default function Home() {
             const r = reviews[i];
             return (
               <div key={i} className="rounded-3xl border p-4 sm:p-6 hover:border-teal-500">
-                <div className="text-yellow-500">★★★★★</div>
+                
                 <p className="mt-2 sm:mt-3 text-gray-800 text-sm sm:text-base">“{r.quote}”</p>
                 <p className="mt-2 sm:mt-3 text-xs sm:text-sm text-gray-500">{r.name}</p>
               </div>
@@ -236,26 +241,10 @@ export default function Home() {
       </section>
 
       {/* GUIDES */}
-      <section className="mx-auto max-w-6xl px-4 sm:px-6 pb-12 sm:pb-14">
-        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-center text-teal-600">Cost guides & advice</h2>
-        <div className="mt-6 sm:mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-          {[
-            { href: "/guides/repointing-cost-kent", title: "How much does repointing cost in Kent?", img: "/images/guide-repointing.jpg" },
-            { href: "/guides/roof-repair-cost-kent", title: "Roof repair costs explained", img: "/images/guide-roof.jpg" },
-            { href: "/guides/loft-conversion-cost-kent", title: "Loft conversion costs (2025)", img: "/images/guide-loft.jpg" },
-          ].map((g, i) => (
-            <Link key={i} href={g.href} className="rounded-3xl border hover:shadow-md hover:border-teal-500 transition overflow-hidden">
-              <div className="relative h-36 sm:h-40">
-                <Image src={g.img} alt={g.title} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" />
-              </div>
-              <div className="p-4 sm:p-5">
-                <h3 className="font-semibold text-sm sm:text-base">{g.title}</h3>
-                <p className="text-xs sm:text-sm text-teal-600 mt-2">Read more →</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
+      
+{/* AI Showcase (replaces Cost guides block) */}
+<section><HomeAiShowcase/></section>
+
 
       {/* ACTION CARDS */}
       <section className="mx-auto max-w-6xl px-4 sm:px-6 pb-12">

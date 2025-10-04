@@ -1,6 +1,7 @@
-import HomeAiShowcase from "@/components/home/HomeAiShowcase";
-/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
+import HomeAiShowcase from "@/components/home/HomeAiShowcase";
+import HowItWorksShow from "@/components/home/HowItWorksShow";
+/* eslint-disable react-hooks/exhaustive-deps */
 import QuickLinksCategories from "../components/QuickLinksCategories";
 import MinimalTrustPanel from "../components/MinimalTrustPanel";
 
@@ -10,6 +11,8 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import HeaderActions from "@/components/HeaderActions";
 import TrustHero from "@/components/TrustHero";
+
+import HowItWorksBlock from "@/components/home/HowItWorksBlock";
 
 export default function Home() {
   const suggestions = ["Leaky roof","Wall needs repointing","Kitchen renovation","Emergency plumber"];
@@ -47,7 +50,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-white text-slate-900">
-      {/* HEADER */}
+  {/* HEADER */}
       <header className="sticky top-0 z-40 w-full border-b bg-white/90 backdrop-blur">
   <div className="mx-auto max-w-6xl px-4 h-16 flex items-center justify-between">
     {/* Left: brand / logo */}
@@ -136,28 +139,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* HOW IT WORKS */}
-      <section className="mx-auto max-w-6xl px-4 sm:px-6 py-10 sm:py-12">
-        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-center">How it works</h2>
-        <div className="mt-6 sm:mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-          {[
-            { emoji: "📝", title: "Tell us about your job", text: "Describe your project. Add photos or plans for accuracy." },
-            { emoji: "🤖", title: "AI estimates instantly", text: "You get a fair price range based on real job data." },
-            { emoji: "👷", title: "Matched with the right builder", text: "Free survey and a fixed confirmed quote." },
-          ].map((it, i) => (
-            <div key={i} className="rounded-2xl border p-4 sm:p-6 text-center hover:shadow-sm">
-              <div className="text-2xl sm:text-3xl">{it.emoji}</div>
-              <h3 className="mt-2 sm:mt-3 font-semibold">{it.title}</h3>
-              <p className="mt-1 sm:mt-2 text-gray-600 text-sm sm:text-base">{it.text}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* CATEGORIES */}
-      <section className="bg-white border-y">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10 sm:py-12">
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-center">Browse our most popular categories</h2>
+      {/* Browse our most popular categories</h2>
 
 <MinimalTrustPanel />
 
@@ -224,7 +206,11 @@ export default function Home() {
 
 <TrustSection />
 <section className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-14">
-        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-center text-teal-600">What our customers say</h2>
+        
+
+{/* Epic How it works slideshow */}
+<HowItWorksBlock />
+<h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-center text-teal-600">What our customers say</h2>
         <div className="mt-6 sm:mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           {[0,1,2].map(offset => {
             const i = (rIndex + offset) % reviews.length;
@@ -243,32 +229,13 @@ export default function Home() {
       {/* GUIDES */}
       
 {/* AI Showcase (replaces Cost guides block) */}
-<section><HomeAiShowcase/></section>
+<section><HomeAiShowcase/>
+</section>
 
 
       {/* ACTION CARDS */}
-      <section className="mx-auto max-w-6xl px-4 sm:px-6 pb-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-          {[
-            { img: "/images/action-review.jpg", title: "Leave a review", body: "Have you completed a project recently? Let your tradesperson know how they did.", href: "/review", cta: "Leave a review" },
-            { img: "/images/action-trades.jpg", title: "Tradesperson sign up", body: "Join a platform built for quality trades — AI-ready leads, fair pricing, real jobs.", href: "/trades/join", cta: "Join today" },
-            { img: "/images/action-quote.jpg", title: "Request a quote", body: "Tell us what you’re looking for and we’ll pass your request to approved tradespeople.", href: "/quote", cta: "Request a quote" },
-          ].map((card, i) => (
-            <div key={i} className="rounded-3xl border overflow-hidden">
-              <div className="relative h-36 sm:h-44 bg-gray-100">
-                <Image src={card.img} alt={card.title} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" />
-              </div>
-              <div className="p-5">
-                <h3 className="text-lg sm:text-xl font-bold text-[#0d1a4a]">{card.title}</h3>
-                <p className="mt-2 text-gray-600 text-sm sm:text-base">{card.body}</p>
-                <Link href={card.href} className="mt-4 inline-flex w-full sm:w-auto justify-center rounded-full bg-teal-600 text-white px-5 py-3 font-semibold hover:bg-teal-700">
-                  {card.cta}
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      
+
 
       {/* FINAL CTA */}
       <section className="bg-teal-700 text-white">
