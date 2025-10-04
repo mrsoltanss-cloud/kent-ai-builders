@@ -22,11 +22,16 @@ const jobs: Array<{label:string; range:[number,number]}> = [
 ];
 
 export default function SocialProofTicker(){
-  // deterministically refresh dataset each 48h bucket
-  const bucket = Math.floor(Date.now()/(48*3600*1000));
-  const rng = useMemo(()=>mulberry32(bucket),[bucket]);
+  // Render a stable shell on server; build dataset after mount
+  const [mounted,setMounted] = useState(false);
+  const [dataset,setDataset] = useState<{id:string;text:string}[]>([]);
+  const [idx,setIdx]=useState(0);
 
-  const dataset = useMemo(()=>{
+  useEffect(()=>{
+    setMounted(true);
+    // deterministically refresh dataset each 48h bucket
+    const bucket = Math.floor(Date.now()/(48*3600*1000));
+    const rng = mulberry32(bucket);
     const list = [];
     for(let i=0;i<12;i++){
       const f=pick(rng, firstNames);
@@ -37,25 +42,37 @@ export default function SocialProofTicker(){
         text: `${f} from ${t} just booked a ${j.label} for ${toPrice(rng, j.range)} ✅`,
       });
     }
-    return list;
-  },[bucket,rng]);
+    setDataset(list);
+  },[]);
 
-  const [idx,setIdx]=useState(0);
   useEffect(()=>{
-    const id=setInterval(()=> setIdx(i=> (i+1)%dataset.length), 3500);
+    if(!mounted || dataset.length===0) return;
+    const id=setInterval(()=> setIdx(i=> (i+1)%dataset.length), 3800);
     return ()=> clearInterval(id);
-  },[dataset.length]);
+  },[mounted,dataset.length]);
 
   return (
-    <div className="rounded-2xl border border-amber-200 bg-amber-50 text-amber-800 px-4 py-3 overflow-hidden">
+    <div className="rounded-xl border border-amber-300 bg-amber-100 text-amber-900 px-4 py-3 shadow-sm">
       <div className="flex items-center gap-2">
-        <span>💬</span>
-        <div className="relative h-5 overflow-hidden">
-          <div className="whitespace-nowrap transition-transform duration-500 will-change-transform" style={{ transform: `translateY(-${idx*1.4}rem)` }}>
-            {dataset.map(item=>(
-              <div key={item.id} className="h-6 leading-6">{item.text}</div>
-            ))}
-          </div>
+        <span className="text-lg" aria-hidden>📣</span>
+        <div className="relative h-6 overflow-hidden w-full">
+          {/* placeholder line on server to keep markup stable */}
+          {!mounted || dataset.length===0 ? (
+            <div className="h-6 leading-6 font-medium tracking-tight" suppressHydrationWarning>
+              Recent bookings are loading…
+            </div>
+          ) : (
+            <div
+              className="transition-transform duration-500 will-change-transform"
+              style={{ transform: `translateY(-${idx*1.65}rem)` }}
+            >
+              {dataset.map(item=>(
+                <div key={item.id} className="h-6 leading-6 font-medium tracking-tight">
+                  {item.text}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

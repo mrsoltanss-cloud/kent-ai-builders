@@ -1,13 +1,16 @@
-"use client";
+/**
+ * FooterBuild — safely hidden by default.
+ * Set NEXT_PUBLIC_SHOW_BUILD_BADGE=true to show it again.
+ */
 import { BUILD_ID, BUILD_TIME } from "@/build-info";
 
-export default function FooterBuild(){
+export default function FooterBuild() {
+  const show = process.env.NEXT_PUBLIC_SHOW_BUILD_BADGE === "true";
+  if (!show) return null;
+
   return (
-    <div className="w-full border-t border-gray-200 bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/50">
-      <div className="mx-auto max-w-6xl px-4 py-3 text-xs text-gray-600 flex items-center justify-between">
-        <span>£5m Insurance · 12-month guarantee · DBS-checked teams</span>
-        <span className="tabular-nums">Build: {BUILD_ID} · {new Date(BUILD_TIME).toLocaleString()}</span>
-      </div>
+    <div className="w-full py-2 text-center text-xs text-zinc-500">
+      Build: {BUILD_ID} • {new Date(BUILD_TIME).toLocaleString()}
     </div>
   );
 }
