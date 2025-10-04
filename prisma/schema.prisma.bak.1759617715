@@ -42,9 +42,8 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   leads       Lead[]
-  auditActor  AuditLog[]   @relation("actor")
-  auditTarget AuditLog[]   @relation("target")
-  UserProfile UserProfile?
+  auditActor  AuditLog[] @relation("actor")
+  auditTarget AuditLog[] @relation("target")
 }
 
 model Lead {
@@ -95,19 +94,19 @@ model AuditLog {
 
 /// --- Progressive profile captured right after signup ---
 model UserProfile {
-  id           String   @id @default(cuid())
-  userId       String   @unique
-  postcode     String?
-  addressLine1 String?
-  addressLine2 String?
-  city         String?
-  phone        String?
-  timeframe    String? // e.g. "ASAP" | "2–4 weeks" | "Flexible"
-  propertyType String? // e.g. "House" | "Flat" | "Bungalow"
-  ownership    String? // e.g. "Owner" | "Landlord" | "Tenant"
-  accessNotes  String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  postcode      String?
+  addressLine1  String?
+  addressLine2  String?
+  city          String?
+  phone         String?
+  timeframe     String?  // e.g. "ASAP" | "2–4 weeks" | "Flexible"
+  propertyType  String?  // e.g. "House" | "Flat" | "Bungalow"
+  ownership     String?  // e.g. "Owner" | "Landlord" | "Tenant"
+  accessNotes   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
