@@ -37,8 +37,9 @@ function StatusBadge({ status }: { status?: string | null }) {
 export default async function LeadDetail({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   // Auth (server-side)
   const session = await getServerSession(authOptions);
   const userId = (session?.user as any)?.id as string | undefined;
@@ -46,7 +47,7 @@ export default async function LeadDetail({
 
   // Fetch lead scoped to this user (prevents IDOR)
   const lead = await prisma.lead.findFirst({
-    where: { id: params.id, userId },
+    where: { id: id, userId },
     select: {
       id: true,
       service: true,
