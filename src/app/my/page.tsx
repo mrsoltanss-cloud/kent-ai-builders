@@ -1,502 +1,288 @@
-'use client';
+import { PrismaClient } from '@prisma/client';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth/options';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import * as React from 'react';
+import SignOutButton from '@/components/SignOutButton';
 
-/* ---------- utils ---------- */
-function cn(...a:(string|false|undefined)[]){return a.filter(Boolean).join(' ');}
-const rm = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const GBP = (n:number)=> n.toLocaleString("en-GB",{style:"currency",currency:"GBP",maximumFractionDigits:0});
+const prisma = new PrismaClient();
 
-/* ---------- page ---------- */
-export default function MyPage(){
-  const [tab,setTab] = React.useState<'overview'|'files'|'activity'|'settings'>('overview');
+function formatDate(d?: Date | null) {
+  if (!d) return '—';
+  try {
+    return new Date(d).toLocaleString();
+  } catch {
+    return String(d);
+  }
+}
 
+function StatusBadge({ status }: { status?: string | null }) {
+  const s = (status || '').toUpperCase();
+  const base =
+    'inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ring-1';
+  const variant =
+    s === 'NEW' ? 'bg-blue-100 text-blue-700 ring-blue-200' :
+    s === 'QUALIFIED' ? 'bg-amber-100 text-amber-700 ring-amber-200' :
+    s === 'CONTACTED' ? 'bg-purple-100 text-purple-700 ring-purple-200' :
+    s === 'BOOKED' ? 'bg-emerald-100 text-emerald-700 ring-emerald-200' :
+    s === 'CLOSED' ? 'bg-zinc-100 text-zinc-700 ring-zinc-200' :
+    'bg-zinc-100 text-zinc-700 ring-zinc-200';
   return (
-    <main className="min-h-screen bg-neutral-50 text-neutral-900">
-      <TopBar tab={tab} onTab={setTab}/>
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-6 md:py-10">
-        <HeroSummary />
-
-        {tab==='overview' && <Overview />}
-        {tab==='files'    && <FilesTab />}
-        {tab==='activity' && <ActivityTab />}
-        {tab==='settings' && <SettingsTab />}
-      </div>
-    </main>
+    <span className={`${base} ${variant}`}>
+      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
+      {s || '—'}
+    </span>
   );
 }
 
-/* ---------- chrome ---------- */
-function TopBar({tab,onTab}:{tab: 'overview'|'files'|'activity'|'settings'; onTab:(t:any)=>void;}){
-  const items = [
-    {k:'overview', label:'Overview'},
-    {k:'files', label:'Files'},
-    {k:'activity', label:'Activity'},
-    {k:'settings', label:'Settings'},
-  ] as const;
-
-  return (
-    <header className="sticky top-0 z-30 backdrop-blur supports-[backdrop-filter]:bg-white/65 bg-white/90 border-b border-black/5">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
-        <Link href="/" className="font-extrabold tracking-tight text-xl">Brixel</Link>
-        <nav className="hidden sm:flex gap-1 p-1 rounded-lg bg-neutral-100 ring-1 ring-black/5">
-          {items.map(i=>(
-            <button key={i.k}
-              onClick={()=>onTab(i.k)}
-              className={cn(
-                "px-3 py-1.5 text-sm font-semibold rounded-md transition",
-                tab===i.k ? "bg-white shadow-sm" : "text-neutral-600 hover:text-neutral-900"
-              )}
-            >{i.label}</button>
-          ))}
-        </nav>
-        <button aria-label="Account" className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-400 to-amber-300 ring-1 ring-black/10 shadow-sm" />
-      </div>
-      {/* mobile tabs */}
-      <div className="sm:hidden border-t border-black/5">
-        <div className="px-4 py-2 flex gap-2 overflow-x-auto">
-          {['overview','files','activity','settings'].map(k=>(
-            <button key={k} onClick={()=>onTab(k as any)}
-              className={cn("px-3 py-1.5 rounded-md text-sm font-semibold ring-1",
-                tab===k ? "bg-white ring-black/5" : "bg-neutral-100 text-neutral-700 ring-black/5")}>
-              {k[0].toUpperCase()+k.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function Section({title, subtitle, right, children}:{title:string; subtitle?:string; right?:React.ReactNode; children:React.ReactNode;}){
-  return (
-    <section className="rounded-2xl bg-white shadow-sm ring-1 ring-black/5 p-5 md:p-6">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg md:text-xl font-bold tracking-tight">{title}</h2>
-          {subtitle && <p className="text-sm text-neutral-600 mt-0.5">{subtitle}</p>}
-        </div>
-        {right}
-      </div>
-      <div className="mt-4">{children}</div>
-    </section>
-  );
-}
-
-/* ---------- hero ---------- */
-function KPI({label,value}:{label:string;value:string}){
-  return (
-    <div className="rounded-xl bg-white/80 ring-1 ring-black/5 px-3 py-2 shadow-sm">
-      <div className="text-[11px] uppercase tracking-wider text-neutral-500 font-semibold">{label}</div>
-      <div className="text-sm md:text-base font-bold tabular-nums">{value}</div>
+function StatCard({
+  title,
+  value,
+  hint,
+  href,
+}: {
+  title: string;
+  value: React.ReactNode;
+  hint?: string;
+  href?: string;
+}) {
+  const content = (
+    <div className="relative overflow-hidden rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm ring-1 ring-transparent transition hover:shadow-md hover:ring-emerald-100 grid gap-2">
+      <div className="text-sm text-zinc-500">{title}</div>
+      <div className="text-3xl font-semibold tracking-tight">{value}</div>
+      {hint ? <div className="text-xs text-zinc-500">{hint}</div> : null}
+      <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-gradient-to-br from-emerald-50 to-transparent" />
     </div>
   );
+  if (href) return <Link href={href}>{content}</Link>;
+  return content;
 }
-function HeroSummary(){
-  React.useEffect(()=>{
-    if(rm()) return;
-    const root = document.getElementById('ai-sweep');
-    if(!root) return;
-    root.animate([{opacity:.35, transform:'scale(1)'},{opacity:.55, transform:'scale(1.06)'}],
-      {duration:2200, direction:'alternate', iterations:Infinity});
-  },[]);
-  return (
-    <section className="relative overflow-hidden rounded-2xl ring-1 ring-black/5 bg-white p-5 md:p-6">
-      <div id="ai-sweep" aria-hidden className="pointer-events-none absolute -inset-24 blur-3xl opacity-40 bg-[conic-gradient(from_180deg_at_50%_50%,theme(colors.amber.300/.7),theme(colors.emerald.300/.8),theme(colors.sky.300/.7),theme(colors.amber.300/.7))]" />
-      <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Your project</h1>
-          <p className="mt-1 text-sm md:text-base text-neutral-700">ME15 · Semi-detached · Kitchen refit</p>
-          <div className="mt-3 flex gap-2">
-            <KPI label="Estimate" value={`${GBP(12800)}–${GBP(15600)}`} />
-            <KPI label="Confidence" value="82%" />
-            <KPI label="Stage" value="Planning" />
-          </div>
-        </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-          <Link href="#" className="inline-flex items-center justify-center rounded-lg bg-neutral-900 text-white font-semibold px-4 py-2 hover:bg-neutral-800">Add photos</Link>
-          <Link href="#" className="inline-flex items-center justify-center rounded-lg bg-white text-neutral-900 font-semibold px-4 py-2 ring-1 ring-black/10 hover:bg-neutral-100">Upload quotes</Link>
-          <Link href="#settings" className="text-sm font-medium text-neutral-700 hover:text-neutral-900 sm:ml-2">Settings</Link>
-        </div>
-      </div>
-    </section>
+
+export default async function Page() {
+  const session = await getServerSession(authOptions);
+  const userId = (session?.user as any)?.id as string | undefined;
+  if (!userId) redirect('/auth/signin');
+
+  const [leadCount, recent, latest, grouped] = await Promise.all([
+    prisma.lead.count({ where: { userId } }),
+    prisma.lead.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      select: { id: true, service: true, status: true, createdAt: true },
+    }),
+    prisma.lead.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        service: true,
+        scope: true,
+        rooms: true,
+        sqm: true,
+        propertyAge: true,
+        urgency: true,
+        budget: true,
+        timeline: true,
+        status: true,
+        notes: true,
+        description: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    }),
+    prisma.lead.groupBy({
+      by: ['status'],
+      where: { userId },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const statusCounts: Record<string, number> = Object.fromEntries(
+    grouped.map((g) => [g.status, g._count._all])
   );
-}
 
-/* ---------- overview: bento + columns ---------- */
-function Overview(){
   return (
-    <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2 space-y-6">
-        <BentoMetrics/>
-        <StoryboardSection/>
-        <QuoteXraySection/>
-      </div>
-      <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-4 lg:self-start">
-        <RiskRadarSection/>
-        <ConfiguratorSection/>
-      </div>
-    </div>
-  );
-}
-
-function BentoMetrics(){
-  const items = [
-    {title:'Next best action', body:'Book a survey slot', tone:'from-emerald-200 to-emerald-100'},
-    {title:'Likelihood to save', body:'8–12% vs market', tone:'from-amber-200 to-amber-100'},
-    {title:'Local builder fit', body:'3 strong matches', tone:'from-sky-200 to-sky-100'},
-    {title:'Risk trend', body:'Stable this week', tone:'from-fuchsia-200 to-fuchsia-100'},
-  ];
-  return (
-    <div className="grid sm:grid-cols-2 gap-4">
-      {items.map((it,i)=>(
-        <div key={i} className="rounded-2xl overflow-hidden ring-1 ring-black/5 bg-white">
-          <div className={cn("h-20 bg-gradient-to-br", it.tone)} />
-          <div className="p-4">
-            <div className="font-semibold">{it.title}</div>
-            <div className="text-sm text-neutral-600">{it.body}</div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ---------- storyboard ---------- */
-type Milestone = { id:string; title:string; caption:string; tone:string; };
-const M:Milestone[] = [
-  {id:'m1', title:'Survey & scope', caption:'Measure up, power + plumbing mapped.', tone:'from-emerald-200 to-emerald-100'},
-  {id:'m2', title:'First fix', caption:'Cables, pipes, studs placed.', tone:'from-amber-200 to-amber-100'},
-  {id:'m3', title:'Second fix', caption:'Board, skim, prime.', tone:'from-sky-200 to-sky-100'},
-  {id:'m4', title:'Finishes', caption:'Cabinets, tops, tiling.', tone:'from-fuchsia-200 to-fuchsia-100'},
-  {id:'m5', title:'Snag & sign-off', caption:'Sealant, align, handover.', tone:'from-indigo-200 to-indigo-100'},
-];
-
-function StoryboardSection(){
-  return (
-    <Section title="Storyboard" subtitle="Before → During → After. Your build, chaptered automatically."
-      right={<Link href="#" className="text-sm font-medium text-emerald-700 hover:underline">Share</Link>}
-    >
-      <div className="overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div className="min-w-[560px] sm:min-w-0 grid auto-cols-[85%] sm:auto-cols-[320px] grid-flow-col gap-4">
-          {M.map((c)=>(
-            <article key={c.id} className="rounded-xl ring-1 ring-black/5 bg-white overflow-hidden">
-              <div className={cn("h-28 sm:h-36 bg-gradient-to-br relative", c.tone)}>
-                <div aria-hidden className="absolute inset-0 [mask-image:radial-gradient(black,transparent_60%)] opacity-50" />
-              </div>
-              <div className="p-4">
-                <h3 className="font-semibold">{c.title}</h3>
-                <p className="text-sm text-neutral-600 mt-1">{c.caption}</p>
-                <div className="mt-3 flex items-center gap-2">
-                  <button className="text-xs font-semibold px-2 py-1 rounded-md bg-neutral-100 hover:bg-neutral-200">Edit</button>
-                  <button className="text-xs font-semibold px-2 py-1 rounded-md bg-neutral-100 hover:bg-neutral-200">Hide</button>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      </div>
-    </Section>
-  );
-}
-
-/* ---------- quote x-ray ---------- */
-type Row = { item:string; unit:string; qty:number; a:number; b:number; flags:string[] };
-const R:Row[] = [
-  { item:'Rewire 4x circuits', unit:'job', qty:1, a:1600, b:1450, flags:['Different unit'] },
-  { item:'Tile adhesive', unit:'bag', qty:8, a:280, b:280, flags:['PC sum'] },
-  { item:'Waste removal', unit:'skip', qty:1, a:260, b:0, flags:['Missing'] },
-];
-function currency(n:number){ return n.toLocaleString('en-GB',{style:'currency',currency:'GBP', maximumFractionDigits:0}); }
-
-function QuoteXraySection(){
-  return (
-    <Section title="Quote Compare (X-ray)" subtitle="Upload PDFs or photos. We’ll normalise, compare, and flag gaps."
-      right={<span className="text-xs text-neutral-500">PDF, JPG, PNG</span>}
-    >
-      <div className="rounded-xl border border-dashed border-neutral-300 bg-neutral-50/70 p-4 sm:p-5 mb-4">
-        <p className="text-sm text-neutral-700"><strong>Drop quotes here</strong> or <Link className="text-emerald-700 underline" href="#">browse files</Link></p>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="text-left text-neutral-500">
-            <tr className="[&>th]:py-2 [&>th]:pr-4"><th>Item</th><th>Unit</th><th>Qty</th><th>Quote A</th><th>Quote B</th><th>Flags</th></tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-200">
-            {R.map((r,i)=>(
-              <tr key={i} className="[&>td]:py-2 [&>td]:pr-4 align-top">
-                <td className="font-medium">{r.item}</td>
-                <td>{r.unit}</td><td>{r.qty}</td>
-                <td className="whitespace-nowrap">{currency(r.a)}</td>
-                <td className="whitespace-nowrap">{currency(r.b)}</td>
-                <td className="space-x-1">
-                  {r.flags.map((f,idx)=>(
-                    <span key={idx} className={cn(
-                      "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                      f==='Missing' && "bg-rose-50 text-rose-700 ring-1 ring-rose-600/20",
-                      f==='PC sum' && "bg-amber-50 text-amber-700 ring-1 ring-amber-600/20",
-                      f==='Different unit' && "bg-sky-50 text-sky-700 ring-1 ring-sky-600/20"
-                    )}>{f}</span>
-                  ))}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </Section>
-  );
-}
-
-/* ---------- risk radar ---------- */
-function RiskRadarSection(){
-  const risks = [
-    { name:'Budget', score:64, hue:'bg-rose-500' },
-    { name:'Timeline', score:52, hue:'bg-amber-500' },
-    { name:'Quality', score:30, hue:'bg-emerald-500' },
-    { name:'Access', score:42, hue:'bg-sky-500' },
-  ];
-  const actions = [
-    'Ask for fixed price on PC items.',
-    'Confirm warranty terms in writing.',
-    'Check skip permit with council.',
-  ];
-  return (
-    <Section title="Risk Radar" subtitle="Transparent, live risk across four areas.">
-      <div className="grid grid-cols-2 gap-3">
-        {risks.map((r)=>(
-          <div key={r.name} className="rounded-xl ring-1 ring-black/5 p-3">
-            <div className="text-sm font-semibold">{r.name}</div>
-            <div className="mt-1 flex items-center gap-2">
-              <div className="h-2 flex-1 rounded-full bg-neutral-200 overflow-hidden">
-                <div className={cn("h-full", r.hue)} style={{width:`${r.score}%`}}/>
-              </div>
-              <div className="text-xs w-8 text-right tabular-nums">{r.score}%</div>
+    <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-b from-white to-zinc-50">
+      {/* Header */}
+      <div className="border-b border-zinc-200 bg-gradient-to-b from-white to-emerald-50/40">
+        <div className="mx-auto max-w-6xl px-4 py-6">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight">My Dashboard</h1>
+              <p className="mt-1 text-sm text-zinc-600">
+                Live overview of your requests and recent activity.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/quote"
+                className="inline-flex items-center rounded-xl bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700"
+              >
+                Start a new quote
+              </Link>
+              <SignOutButton />
             </div>
           </div>
-        ))}
-      </div>
-      <div className="mt-4">
-        <div className="text-sm font-semibold mb-1">Actions to de-risk</div>
-        <ul className="list-disc pl-5 text-sm text-neutral-700 space-y-1">
-          {actions.map((a,i)=><li key={i}>{a}</li>)}
-        </ul>
-      </div>
-      <p className="mt-3 text-xs text-neutral-500">Advisory only; always confirm with your contractor.</p>
-    </Section>
-  );
-}
-
-/* ---------- configurator ---------- */
-type Tier='Essential'|'Standard'|'Premium';
-type Selection={worktop:'Laminate'|'Quartz'|'Granite'; flooring:'LVT'|'Porcelain'|'Engineered wood'; appliances:'Freestanding'|'Integrated'};
-function ConfiguratorSection(){
-  const [tier,setTier]=React.useState<Tier>('Standard');
-  const [sel,setSel]=React.useState<Selection>({worktop:'Quartz',flooring:'Porcelain',appliances:'Integrated'});
-  const [pulseIndex,setPulseIndex]=React.useState(0);
-  const pulse=['Timber +1.3% (30d)','Tile adhesive \u2194 (7d)','Electrician day rate +0.2% (14d)'];
-  React.useEffect(()=>{ if(rm()) return; const t=setInterval(()=>setPulseIndex(i=>(i+1)%pulse.length),6000); return()=>clearInterval(t);},[]);
-  const {low,high,deltaLabel}=React.useMemo(()=>{
-    let low=12800,high=15600;
-    if(tier==='Essential'){low-=1400;high-=1800;}
-    if(tier==='Premium'){low+=2200;high+=2800;}
-    const add=(l:number,h:number)=>{low+=l;high+=h;};
-    if(sel.worktop==='Laminate') add(-900,-900);
-    if(sel.worktop==='Granite')  add(+800,+1100);
-    if(sel.flooring==='LVT') add(-300,-300);
-    if(sel.flooring==='Engineered wood') add(+600,+900);
-    if(sel.appliances==='Freestanding') add(-450,-450);
-    const mid=Math.round((low+high)/2), base=15600, diff=mid-base;
-    const dl = diff===0?'±0 vs Standard': (diff>0?`+${GBP(Math.abs(diff))}`:`−${GBP(Math.abs(diff))}`)+' vs Standard';
-    return {low,high,deltaLabel:dl};
-  },[tier,sel]);
-
-  return (
-    <Section title="Materials & finishes" subtitle="Optimising learning and best-fit price">
-      <div className="inline-flex rounded-lg bg-neutral-100 p-1 ring-1 ring-black/5">
-        {(['Essential','Standard','Premium'] as Tier[]).map(t=>(
-          <button key={t} onClick={()=>setTier(t)}
-            className={cn("px-3 py-1.5 text-sm font-semibold rounded-md",
-              t===tier?"bg-white shadow-sm":"text-neutral-600 hover:text-neutral-900")}
-            aria-pressed={t===tier}>{t}</button>
-        ))}
-      </div>
-
-      <div className="mt-4 space-y-3">
-        <OptionRow label="Worktop" value={sel.worktop} options={['Laminate','Quartz','Granite']} onChange={(v)=>setSel(s=>({...s,worktop:v as any}))}/>
-        <OptionRow label="Flooring" value={sel.flooring} options={['LVT','Porcelain','Engineered wood']} onChange={(v)=>setSel(s=>({...s,flooring:v as any}))}/>
-        <OptionRow label="Appliances" value={sel.appliances} options={['Freestanding','Integrated']} onChange={(v)=>setSel(s=>({...s,appliances:v as any}))}/>
-      </div>
-
-      <div className="mt-4 rounded-xl ring-1 ring-emerald-600/30 bg-emerald-50 p-4">
-        <div className="text-xs font-semibold text-emerald-700">Estimated range</div>
-        <div className="mt-0.5 text-lg md:text-xl font-extrabold tracking-tight">{GBP(low)} – {GBP(high)}</div>
-        <div className="mt-1 text-xs text-emerald-800">{deltaLabel}</div>
-        <div className="mt-2 text-xs text-neutral-700">
-          <span className="inline-block px-2 py-1 rounded-md bg-white ring-1 ring-black/5">{pulse[pulseIndex]}</span>
         </div>
       </div>
 
-      <div className="mt-4 flex gap-2">
-        <button className="inline-flex items-center justify-center rounded-lg bg-neutral-900 text-white font-semibold px-4 py-2 hover:bg-neutral-800">Save selection</button>
-        <button className="inline-flex items-center justify-center rounded-lg bg-white text-neutral-900 font-semibold px-4 py-2 ring-1 ring-black/10 hover:bg-neutral-100">Ask AI to trim 5%</button>
-      </div>
-    </Section>
-  );
-}
-function OptionRow({label,value,options,onChange}:{label:string;value:string;options:string[];onChange:(v:string)=>void;}){
-  return (
-    <div>
-      <div className="text-sm font-semibold mb-1">{label}</div>
-      <div className="flex flex-wrap gap-2">
-        {options.map(opt=>(
-          <button key={opt} onClick={()=>onChange(opt)}
-            className={cn("px-3 py-1.5 rounded-md text-sm font-semibold ring-1",
-              value===opt?"bg-neutral-900 text-white ring-neutral-900":"bg-white text-neutral-800 ring-black/10 hover:bg-neutral-100")}
-            aria-pressed={value===opt}>{opt}</button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ---------- files tab (placeholder) ---------- */
-function FilesTab(){
-  const files=[{name:'Quote_A.pdf', size:'412 KB'},{name:'Kitchen_plan.jpg', size:'1.2 MB'}];
-  return (
-    <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {files.map((f,i)=>(
-        <section key={i} className="rounded-2xl bg-white shadow-sm ring-1 ring-black/5 p-5">
-          <div className="font-semibold">{f.name}</div>
-          <div className="text-sm text-neutral-600">{f.size}</div>
-          <div className="mt-3 flex gap-2">
-            <button className="px-3 py-1.5 rounded-md text-sm font-semibold bg-neutral-900 text-white">Preview</button>
-            <button className="px-3 py-1.5 rounded-md text-sm font-semibold ring-1 ring-black/10">Remove</button>
-          </div>
-        </section>
-      ))}
-    </div>
-  );
-}
-
-/* ---------- activity tab ---------- */
-function ActivityTab(){
-  const items=[
-    {t:'Today', logs:['You saved a materials configuration','Risk Radar updated (Budget −2%)']},
-    {t:'This week', logs:['Uploaded Quote_B.pdf','Shared Storyboard link']},
-  ];
-  return (
-    <div className="mt-8 space-y-6">
-      {items.map((g,i)=>(
-        <section key={i} className="rounded-2xl bg-white shadow-sm ring-1 ring-black/5 p-5">
-          <div className="font-bold">{g.t}</div>
-          <ul className="mt-2 list-disc pl-5 text-sm text-neutral-700 space-y-1">
-            {g.logs.map((l,j)=><li key={j}>{l}</li>)}
-          </ul>
-        </section>
-      ))}
-    </div>
-  );
-}
-
-/* ---------- settings tab: profile + prefs ---------- */
-function SettingsTab(){
-  return (
-    <div id="settings" className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2 space-y-6">
-        <ProfileEditorCard/>
-      </div>
-      <div className="lg:col-span-1 space-y-6">
-        <PreferencesCard/>
-      </div>
-    </div>
-  );
-}
-
-function ProfileEditorCard(){
-  const [msg,setMsg]=React.useState<string|null>(null);
-  const [busy,setBusy]=React.useState(false);
-  const [form,setForm]=React.useState({
-    name:'Alex Homeowner',
-    email:'alex@example.com',
-    phone:'',
-    postcode:'ME15',
-    address1:'',
-    address2:'',
-    city:'Maidstone',
-  });
-  function set<K extends keyof typeof form>(k:K,v:string){ setForm(s=>({...s,[k]:v})); }
-
-  async function save(e:React.FormEvent){ e.preventDefault(); setBusy(true); setMsg(null);
-    try{
-      await new Promise(r=>setTimeout(r,500)); // fake latency
-      setMsg('Saved successfully.');
-      if(!rm()){
-        const el=document.getElementById('saveToast');
-        el?.animate([{transform:'translateY(8px)',opacity:0},{transform:'translateY(0)',opacity:1}],{duration:180,fill:'both'});
-      }
-    } finally{ setBusy(false); }
-  }
-
-  return (
-    <Section title="Profile" subtitle="Keep your details up to date for smoother quotes.">
-      <form onSubmit={save} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Input label="Full name" value={form.name} onChange={v=>set('name',v)} required />
-        <Input label="Email" type="email" value={form.email} onChange={v=>set('email',v)} required />
-        <Input label="Phone" type="tel" value={form.phone} onChange={v=>set('phone',v)} />
-        <Input label="Postcode" value={form.postcode} onChange={v=>set('postcode',v)} />
-        <Input className="md:col-span-2" label="Address line 1" value={form.address1} onChange={v=>set('address1',v)} />
-        <Input className="md:col-span-2" label="Address line 2" value={form.address2} onChange={v=>set('address2',v)} />
-        <Input className="md:col-span-2" label="Town / City" value={form.city} onChange={v=>set('city',v)} />
-        <div className="md:col-span-2 flex items-center justify-between">
-          <div id="saveToast" className={cn("text-sm text-emerald-700", !msg && "opacity-0")}>{msg || 'Saved successfully.'}</div>
-          <button disabled={busy} className="rounded-lg bg-neutral-900 text-white font-semibold px-4 py-2 hover:bg-neutral-800 disabled:opacity-60">
-            {busy?'Saving…':'Save changes'}
-          </button>
+      {/* Content */}
+      <div className="mx-auto max-w-6xl px-4 py-6">
+        {/* Stats */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            title="Total leads"
+            value={leadCount.toLocaleString()}
+            hint={leadCount === 0 ? 'No requests yet' : `${leadCount} recorded`}
+          />
+          <StatCard
+            title="New"
+            value={(statusCounts['NEW'] ?? 0).toLocaleString()}
+            hint="Awaiting triage"
+          />
+          <StatCard
+            title="Contacted / Booked"
+            value={`${(statusCounts['CONTACTED'] ?? 0) + (statusCounts['BOOKED'] ?? 0)}`}
+            hint="Active pipeline"
+          />
+          <StatCard
+            title="Create a new quote"
+            value="Start now →"
+            hint="Get an instant ballpark estimate"
+            href="/quote"
+          />
         </div>
-      </form>
-    </Section>
-  );
-}
 
-function PreferencesCard(){
-  const [notifEmail,setNotifEmail]=React.useState(true);
-  const [notifSms,setNotifSms]=React.useState(false);
-  const [theme,setTheme]=React.useState<'System'|'Light'|'Dark'>('System');
+        {/* Two-column layout */}
+        <div className="mt-6 grid gap-6 lg:grid-cols-3">
+          {/* Recent */}
+          <section className="lg:col-span-2">
+            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Recent leads</h2>
+                <Link className="text-sm text-zinc-600 hover:text-emerald-700" href="/quote">
+                  New quote
+                </Link>
+              </div>
 
-  return (
-    <Section title="Preferences" subtitle="Notifications & theme">
-      <div className="space-y-4">
-        <label className="flex items-center gap-3">
-          <input type="checkbox" checked={notifEmail} onChange={e=>setNotifEmail(e.target.checked)} className="h-4 w-4"/>
-          <span className="text-sm">Email updates</span>
-        </label>
-        <label className="flex items-center gap-3">
-          <input type="checkbox" checked={notifSms} onChange={e=>setNotifSms(e.target.checked)} className="h-4 w-4"/>
-          <span className="text-sm">SMS updates</span>
-        </label>
-        <div>
-          <div className="text-sm font-semibold mb-1">Theme</div>
-          <div className="flex gap-2">
-            {(['System','Light','Dark'] as const).map(t=>(
-              <button key={t} onClick={()=>setTheme(t)}
-                className={cn("px-3 py-1.5 rounded-md text-sm font-semibold ring-1",
-                  theme===t?"bg-white ring-black/5":"bg-neutral-100 text-neutral-700 ring-black/5")}>{t}</button>
-            ))}
-          </div>
+              {recent.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+                  <div className="h-12 w-12 rounded-full bg-emerald-50 ring-1 ring-emerald-100" />
+                  <p className="text-sm text-zinc-600">
+                    No leads yet. Create your first quote to get started.
+                  </p>
+                  <Link
+                    href="/quote"
+                    className="mt-2 inline-flex items-center rounded-xl bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700"
+                  >
+                    Start a quote
+                  </Link>
+                </div>
+              ) : (
+                <div className="overflow-hidden rounded-xl border border-zinc-200">
+                  <table className="w-full text-sm">
+                    <thead className="bg-zinc-50 text-left text-zinc-500">
+                      <tr>
+                        <th className="px-4 py-3">Service</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3">Created</th>
+                        <th className="px-4 py-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recent.map((l) => (
+                        <tr key={l.id} className="border-t border-zinc-200">
+                          <td className="px-4 py-3">
+                            <Link href={`/my/leads/${l.id}`} className="font-medium text-emerald-700 hover:underline">
+                              {l.service || '—'}
+                            </Link>
+                            <div className="text-xs text-zinc-500">ID: {l.id.slice(0, 8)}…</div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <StatusBadge status={l.status} />
+                          </td>
+                          <td className="px-4 py-3">{formatDate(l.createdAt)}</td>
+                          <td className="px-4 py-3 text-right">
+                            <Link
+                              href={`/my/leads/${l.id}`}
+                              className="inline-flex items-center rounded-lg border border-zinc-300 px-3 py-1.5 text-xs text-zinc-700 hover:bg-zinc-50"
+                            >
+                              View
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Latest lead detail */}
+          <aside className="lg:col-span-1">
+            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+              <h2 className="mb-4 text-lg font-semibold">Latest lead details</h2>
+              {!latest ? (
+                <p className="text-sm text-zinc-600">No details to show yet.</p>
+              ) : (
+                <dl className="grid grid-cols-3 gap-3 text-sm">
+                  <dt className="col-span-1 text-zinc-500">Service</dt>
+                  <dd className="col-span-2 text-zinc-900">{latest.service || '—'}</dd>
+
+                  <dt className="col-span-1 text-zinc-500">Status</dt>
+                  <dd className="col-span-2"><StatusBadge status={latest.status} /></dd>
+
+                  <dt className="col-span-1 text-zinc-500">Rooms</dt>
+                  <dd className="col-span-2">{latest.rooms ?? '—'}</dd>
+
+                  <dt className="col-span-1 text-zinc-500">Size (sqm)</dt>
+                  <dd className="col-span-2">{latest.sqm ?? '—'}</dd>
+
+                  <dt className="col-span-1 text-zinc-500">Property age</dt>
+                  <dd className="col-span-2">{(latest as any).propertyAge ?? '—'}</dd>
+
+                  <dt className="col-span-1 text-zinc-500">Urgency</dt>
+                  <dd className="col-span-2">{(latest as any).urgency ?? '—'}</dd>
+
+                  <dt className="col-span-1 text-zinc-500">Budget</dt>
+                  <dd className="col-span-2">
+                    {typeof latest.budget === 'number' ? `£${latest.budget.toLocaleString()}` : '—'}
+                  </dd>
+
+                  <dt className="col-span-1 text-zinc-500">Timeline</dt>
+                  <dd className="col-span-2">{latest.timeline ?? '—'}</dd>
+
+                  <dt className="col-span-1 text-zinc-500">Created</dt>
+                  <dd className="col-span-2">{formatDate(latest.createdAt)}</dd>
+
+                  <dt className="col-span-1 text-zinc-500">Updated</dt>
+                  <dd className="col-span-2">{formatDate(latest.updatedAt)}</dd>
+                </dl>
+              )}
+
+              <div className="mt-5 flex gap-2">
+                <Link
+                  href="/quote"
+                  className="inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700"
+                >
+                  Add photos / details
+                </Link>
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+              <h3 className="mb-2 text-sm font-semibold text-zinc-900">What happens next?</h3>
+              <ol className="list-decimal pl-5 text-sm text-zinc-600">
+                <li>We review your scope and photos (if added).</li>
+                <li>You’ll get contact within 1–2 business days.</li>
+                <li>We firm up your estimate after a site visit.</li>
+              </ol>
+            </div>
+          </aside>
         </div>
       </div>
-    </Section>
-  );
-}
-
-function Input({label,className,value,onChange,type='text',required=false}:{label:string;className?:string;value:string;onChange:(v:string)=>void;type?:string;required?:boolean;}){
-  return (
-    <div className={className}>
-      <label className="block text-sm font-medium">{label}</label>
-      <input
-        className="mt-1 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-[15px] outline-none focus:ring-2 focus:ring-neutral-900"
-        value={value} onChange={(e)=>onChange(e.target.value)} type={type} required={required}/>
     </div>
   );
 }
