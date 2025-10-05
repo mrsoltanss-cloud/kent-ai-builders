@@ -45,8 +45,6 @@ model User {
   auditActor  AuditLog[]   @relation("actor")
   auditTarget AuditLog[]   @relation("target")
   UserProfile UserProfile?
-  jobs        Job[]
-  jobMessages JobMessage[]
 }
 
 model Lead {
@@ -114,19 +112,20 @@ model UserProfile {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+
 /// --- Core job models powering /my-live ---
 model Job {
-  id         String   @id @default(cuid())
-  userId     String
-  title      String
-  status     String   @default("draft") // draft|active|scheduled|in_progress|done|cancelled
-  budgetLow  Int?
-  budgetHigh Int?
-  postcode   String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id           String   @id @default(cuid())
+  userId       String
+  title        String
+  status       String   @default("draft") // draft|active|scheduled|in_progress|done|cancelled
+  budgetLow    Int?
+  budgetHigh   Int?
+  postcode     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages     JobMessage[]
   appointments JobAppointment[]
   attachments  JobAttachment[]
@@ -140,7 +139,7 @@ model JobMessage {
   content   String
   createdAt DateTime @default(now())
 
-  job  Job   @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  job  Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
 
