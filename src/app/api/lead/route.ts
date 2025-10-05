@@ -1,103 +1,126 @@
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/authOptions";
-import prisma from "@/lib/prisma";
+import { NextResponse } from 'next/server';
+import { PrismaClient, Urgency } from '@prisma/client';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth/options';
 
-function mapUrgency(u?: string): "ASAP" | "ONE_TO_THREE_MONTHS" | "FLEXIBLE" {
-  const t = (u ?? "").toLowerCase();
-  if (t.includes("asap") || t.includes("urgent")) return "ASAP";
-  if (t.includes("1-3") || t.includes("1_3") || t.includes("one") || t.includes("1 to 3"))
-    return "ONE_TO_THREE_MONTHS";
-  return "FLEXIBLE";
+const prisma = new PrismaClient();
+export const dynamic = 'force-dynamic';
+
+/** Case-insensitive mapper to Prisma Urgency enum with a safe fallback. */
+function normalizeUrgency(input: unknown): Urgency | undefined {
+  if (input == null) return undefined;
+  const raw = String(input).trim();
+  if (!raw) return undefined;
+
+  const canon = raw.toUpperCase().replace(/\s+/g, '');
+  const allowed = Object.values(Urgency) as string[];
+
+  const direct = allowed.find((v) => v.toUpperCase().replace(/\s+/g, '') === canon);
+  if (direct) return direct as Urgency;
+
+  const syn: Record<string, string[]> = {
+    ASAP: ['ASAP', 'URGENT', 'IMMEDIATE', 'NOW', 'EMERGENCY'],
+    SOON: ['SOON', 'SHORTLY', 'NEXTFEWWEEKS', 'WITHIN2WEEKS', '2WEEKS'],
+    FLEXIBLE: ['FLEXIBLE', 'LATER', 'NORUSH', 'WHENEVER'],
+  };
+  for (const [target, words] of Object.entries(syn)) {
+    if (words.some((w) => w.toUpperCase().replace(/\s+/g, '') === canon)) {
+      const exists = allowed.find((v) => v.toUpperCase() === target);
+      if (exists) return exists as Urgency;
+    }
+  }
+  return undefined;
+}
+
+/** Strip undefined values from a plain object (for JSON columns). */
+function stripUndefined<T extends Record<string, any>>(obj: T | null | undefined) {
+  if (!obj || typeof obj !== 'object') return undefined;
+  const entries = Object.entries(obj).filter(([, v]) => v !== undefined);
+  return entries.length ? Object.fromEntries(entries) : undefined;
 }
 
 export async function POST(req: Request) {
   try {
+    // Auth (server-side)
     const session = await getServerSession(authOptions);
-    const sessionEmail = session?.user?.email?.toLowerCase()?.trim() || null;
-    let userId = (session?.user as any)?.id ?? null;
-
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized (no session)" }, { status: 401 });
-    }
-
-    // Ensure userId is valid in the CURRENT DB
-    if (userId) {
-      const exists = await prisma.user.findUnique({ where: { id: String(userId) }, select: { id: true } });
-      if (!exists) {
-        userId = null; // fall through to email lookup
-      }
-    }
-
-    if (!userId && sessionEmail) {
-      const byEmail = await prisma.user.findUnique({ where: { email: sessionEmail }, select: { id: true } });
-      if (byEmail) userId = byEmail.id;
-    }
-
+    const userId = (session?.user as any)?.id as string | undefined;
     if (!userId) {
-      return NextResponse.json(
-        { error: "Unauthorized", detail: "User not found in this database. Please sign out and sign in again." },
-        { status: 401 }
-      );
+      return NextResponse.json({ ok: false, error: 'Not signed in' }, { status: 401 });
     }
 
+    // Parse & extract
     const body = await req.json().catch(() => ({}));
     const {
       service,
-      postcode,
+      scope,
+      rooms,
+      sqm,
+      age,             // some clients send `age`
+      propertyAge,     // your DB uses `propertyAge`
       urgency,
-      description = "",
-      photos = [],
-      details = {},
-      budget = null,
-      timeline = null,
-      notes = null,
+      budget,
+      timeline,
+      description,
+      notes,
+      photos,
+      details,
+      // contactName/contactEmail are intentionally ignored (not in your DB schema)
     } = body || {};
 
-    if (!service) return NextResponse.json({ error: "Missing 'service'" }, { status: 400 });
+    // Normalize & sanitize
+    const urgencyEnum = normalizeUrgency(urgency) ?? Urgency.FLEXIBLE;
+    const photosArr = Array.isArray(photos) ? photos : [];
+    const detailsJson = stripUndefined(details);
 
-    const normalisedUrgency = mapUrgency(urgency);
-    const detailsJson = { ...(details || {}), postcode };
+    const data: any = {
+      userId: String(userId),
+      service: service ? String(service) : 'General',
+      scope: typeof scope === 'string' && scope.trim() !== '' ? scope : null,
+      rooms: typeof rooms === 'number' ? rooms : rooms == null ? null : Number(rooms) || null,
+      sqm: typeof sqm === 'number' ? sqm : sqm == null ? null : Number(sqm) || null,
+      propertyAge:
+        propertyAge != null
+          ? String(propertyAge)
+          : age != null
+          ? String(age)
+          : null,
+      urgency: urgencyEnum, // REQUIRED in your DB; always set
+      budget: typeof budget === 'number' ? budget : budget == null ? null : Number(budget) || null,
+      timeline: timeline ?? null,
+      description:
+        typeof description === 'string'
+          ? description.trim() === '' ? null : description
+          : description == null
+          ? null
+          : String(description),
+      notes: notes ?? null,
+    };
+
+    // Attach JSON/array fields ONLY if present in your schema
+    if (detailsJson) data.details = detailsJson;
+    if (photosArr.length) data.photos = photosArr;
 
     const lead = await prisma.lead.create({
-      data: {
-        service: String(service),
-        userId: String(userId),
-        urgency: normalisedUrgency as any,
-        // Optional JSON-ish fields; ignore by Prisma if not in schema
-        // @ts-ignore
-        description,
-        // @ts-ignore
-        photos,
-        // @ts-ignore
-        details: detailsJson,
-        // @ts-ignore
-        budget,
-        // @ts-ignore
-        timeline,
-        // @ts-ignore
-        notes,
-      },
+      data,
       select: { id: true, createdAt: true },
     });
 
-    const ref = `BK-${String(Math.floor(10_000_000 + Math.random() * 89_999_999))}`;
-    return NextResponse.json({ id: lead.id, ref }, { status: 201 });
-  } catch (err: any) {
-    const msg = String(err?.message || "");
-    // FK error hint
-    if (msg.includes("P2003") || msg.toLowerCase().includes("foreign key")) {
+    return NextResponse.json({ ok: true, leadId: lead.id, createdAt: lead.createdAt });
+  } catch (e: any) {
+    console.error('Lead create error:', e);
+    const msg = String(e?.message || '');
+    if (msg.includes('Expected Urgency') || msg.includes('Argument `urgency` is missing')) {
       return NextResponse.json(
-        { error: "Unauthorized", detail: "User in session no longer exists. Sign out and sign in again." },
-        { status: 401 }
+        { ok: false, error: 'Invalid or missing urgency. Allowed: ASAP, SOON, FLEXIBLE.' },
+        { status: 400 }
       );
     }
-    const isValidation =
-      msg.includes("PrismaClientValidationError") || msg.includes("Invalid") || msg.includes("Argument");
-    console.error("Lead create error:", err);
-    return NextResponse.json(
-      { error: "Lead create failed", detail: msg },
-      { status: isValidation ? 400 : 500 }
-    );
+    if (msg.includes('Unknown argument')) {
+      return NextResponse.json(
+        { ok: false, error: 'Payload included fields not in the database schema.' },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json({ ok: false, error: 'Lead create failed.' }, { status: 400 });
   }
 }

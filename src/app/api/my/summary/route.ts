@@ -9,50 +9,49 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    const email = session?.user?.email;
-    if (!email) return NextResponse.json({ ok: false, error: 'Not signed in.' }, { status: 401 });
-
-    const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-    if (!user) return NextResponse.json({ ok: false, error: 'User not found.' }, { status: 401 });
-
-    const lead = await prisma.lead.findFirst({
-      where: { userId: user.id },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        jobType: true,
-        status: true,
-        createdAt: true
-        // Add fields here later as your schema evolves (estLow/estHigh, postcode, etc.)
-      }
-    });
-
-    const counts = {
-      leads: await prisma.lead.count({ where: { userId: user.id } }),
-      files: 0,
-      messages: 0
-    };
-
-    function nextActionFor(status?: string, id?: string) {
-      if (!id) return { label: 'Start your quote', href: '/quote' };
-      const base = `/my/jobs/${id}`;
-      switch ((status || '').toUpperCase()) {
-        case 'DRAFT': return { label: 'Continue quote', href: '/quote' };
-        case 'SUBMITTED': return { label: 'Upload photos', href: `${base}/files` };
-        case 'MATCHED': return { label: 'Book a survey', href: `${base}/schedule` };
-        case 'QUOTED': return { label: 'Review quote', href: `${base}` };
-        default: return { label: 'View your job', href: `${base}` };
-      }
+    const userId = (session?.user as any)?.id;
+    if (!userId) {
+      return NextResponse.json({ ok: false, error: 'Not signed in' }, { status: 401 });
     }
 
-    return NextResponse.json({
-      ok: true,
-      lead,
-      counts,
-      nextAction: nextActionFor(lead?.status as any, lead?.id)
-    });
+    const [leadCount, recent, latest] = await Promise.all([
+      prisma.lead.count({ where: { userId } }),
+      prisma.lead.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+        select: {
+          id: true,
+          service: true,
+          status: true,
+          createdAt: true,
+        },
+      }),
+      prisma.lead.findFirst({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          service: true,
+          scope: true,
+          rooms: true,
+          sqm: true,
+          propertyAge: true,  // matches your DB
+          urgency: true,
+          budget: true,
+          timeline: true,
+          status: true,
+          notes: true,
+          description: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+    ]);
+
+    return NextResponse.json({ ok: true, leadCount, recent, latest });
   } catch (e) {
-    console.error('my/summary GET error:', e);
-    return NextResponse.json({ ok: false, error: 'Failed to load dashboard.' }, { status: 500 });
+    console.error('summary error:', e);
+    return NextResponse.json({ ok: false, error: 'Summary failed.' }, { status: 500 });
   }
 }
