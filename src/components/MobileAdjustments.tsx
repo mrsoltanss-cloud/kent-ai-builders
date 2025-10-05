@@ -3,23 +3,24 @@ import * as React from 'react';
 
 /**
  * MobileAdjustments
- * - Finds hero cards section (“Pick Your Job”) and tags it with .hero-cards / .hero-card
- * - Finds AI sections (“AI Thinks”, “Smart Matchmaking”) and tags container with .matchmaking-shell
- * - Finds the yellow toast (fixed + yellow bg) and tags it with .toast-fixed
- * - Applies CSS tweaks only below 480px, no effect on desktop
+ * Auto-tags sections at runtime and applies mobile-only polish.
+ * - Stacks the "Pick Your Job" cards nicely on phones
+ * - Pads the AI/smart-match shell
+ * - Pushes the yellow toast below the sticky header
+ * Desktop is unaffected (all CSS inside max-width: 480px).
  */
 export default function MobileAdjustments() {
   React.useEffect(() => {
     const tag = () => {
+      const headings = Array.from(document.querySelectorAll<HTMLElement>('h1,h2,h3'));
+
       // 1) HERO CARDS (Pick Your Job)
-      const pickHead = Array.from(document.querySelectorAll('h1,h2'))
-        .find(el => /Pick Your Job/i.test(el.textContent || ''));
+      const pickHead = headings.find(el => /Pick Your Job/i.test(el.textContent || ''));
       if (pickHead) {
-        const root = pickHead.closest('section,div') || document.body;
-        // try to find a grid-like wrapper under this section
-        const grid = (root.querySelector('.grid, [class*="grid-cols"], [class*="grid ']') as HTMLElement) ||
-                     (root.querySelector('div[class*="grid"]') as HTMLElement) ||
-                     undefined;
+        const root = pickHead.closest('section,div,main') || document.body;
+        // find a descendant that is actually a grid container with multiple children
+        const grid = Array.from(root.querySelectorAll<HTMLElement>('div,section,ul'))
+          .find(el => getComputedStyle(el).display.includes('grid') && el.children.length >= 2);
         if (grid) {
           grid.classList.add('hero-cards');
           Array.from(grid.children).forEach(ch => (ch as HTMLElement).classList.add('hero-card'));
@@ -27,34 +28,32 @@ export default function MobileAdjustments() {
       }
 
       // 2) AI SECTIONS (AI Thinks / Smart Matchmaking)
-      const aiHead = Array.from(document.querySelectorAll('h1,h2'))
-        .find(el => /(AI Thinks|Smart Matchmaking)/i.test(el.textContent || ''));
+      const aiHead = headings.find(el => /(AI Thinks|Smart Matchmaking)/i.test(el.textContent || ''));
       if (aiHead) {
-        // try to find the rounded white panel that holds the visual
-        const shell =
-          (aiHead.parentElement?.querySelector('[class*="rounded"], [class*="ring-"], [class*="shadow"]') as HTMLElement) ||
-          (aiHead.closest('section,div')?.querySelector('[class*="rounded"], [class*="ring-"], [class*="shadow"]') as HTMLElement);
+        const scope = aiHead.closest('section,div,main') || document.body;
+        const shell = scope.querySelector<HTMLElement>(
+          '[class*="rounded"],[class*="ring-"],[class*="shadow"],[class*="border"],[class*="bg-white"]'
+        );
         if (shell) shell.classList.add('matchmaking-shell');
       }
 
-      // 3) YELLOW TOAST (fixed + yellow background)
-      const maybeToasts = Array.from(document.querySelectorAll('.bg-yellow-50, .bg-amber-50, .bg-[#fff7cc], [role="status"]'));
-      for (const el of maybeToasts) {
-        const cs = window.getComputedStyle(el);
-        if (cs.position === 'fixed') {
-          (el as HTMLElement).classList.add('toast-fixed');
-        }
+      // 3) YELLOW TOAST (fixed + yellow-ish)
+      const candidateToasts = Array.from(
+        document.querySelectorAll<HTMLElement>('.bg-yellow-50,.bg-amber-50,[role="status"]')
+      );
+      for (const el of candidateToasts) {
+        const cs = getComputedStyle(el);
+        if (cs.position === 'fixed') el.classList.add('toast-fixed');
       }
     };
 
-    // tag immediately, after hydration, and on DOM changes
+    // Initial + a couple of delayed passes (SSR/hydration) and watch DOM changes
     tag();
-    const t1 = setTimeout(tag, 300);
-    const t2 = setTimeout(tag, 900);
-    const mo = new MutationObserver(() => tag());
+    const t1 = window.setTimeout(tag, 300);
+    const t2 = window.setTimeout(tag, 900);
+    const mo = new MutationObserver(tag);
     mo.observe(document.documentElement, { subtree: true, childList: true, attributes: true });
 
-    // tidy
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
@@ -63,13 +62,11 @@ export default function MobileAdjustments() {
   }, []);
 
   return (
-    <>
-      <style
-        // mobile-only CSS; desktops unaffected
-        dangerouslySetInnerHTML={{
-          __html: `
+    <style
+      // Mobile-only tweaks; desktop untouched
+      dangerouslySetInnerHTML={{
+        __html: `
 @media (max-width: 480px) {
-  /* Cards stack & breathe */
   .hero-cards {
     display: grid !important;
     grid-template-columns: 1fr !important;
@@ -81,15 +78,11 @@ export default function MobileAdjustments() {
     box-shadow: 0 6px 24px rgba(0,0,0,0.06) !important;
     overflow: hidden;
   }
-
-  /* AI shell padding & safe area */
   .matchmaking-shell {
     padding: 16px !important;
     border-radius: 16px !important;
     margin-inline: max(10px, env(safe-area-inset-left)) !important;
   }
-
-  /* Keep the toast clear of the sticky header & safe area */
   .toast-fixed {
     top: calc(env(safe-area-inset-top) + 64px) !important;
     left: max(10px, env(safe-area-inset-left)) !important;
@@ -97,9 +90,8 @@ export default function MobileAdjustments() {
     border-radius: 14px !important;
   }
 }
-          `.trim()
-        }}
-      />
-    </>
+        `.trim()
+      }}
+    />
   );
 }
