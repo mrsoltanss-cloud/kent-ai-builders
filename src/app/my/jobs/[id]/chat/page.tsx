@@ -1,13 +1,13 @@
-// 'use client' is required to use useParams()
 'use client';
 
 import * as React from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
-export default function ChatPage() {
-  const params = useParams() as { id?: string };
-  const id = params?.id ?? '';
+export default function Page() {
+  const params = useParams() as { id?: string | string[] };
+  const idParam = params?.id;
+  const jobId = Array.isArray(idParam) ? (idParam[0] ?? '') : (idParam ?? '');
 
   return (
     <main className="min-h-[70vh] px-4 py-10 bg-neutral-50">
@@ -24,11 +24,11 @@ export default function ChatPage() {
         <div className="rounded-2xl bg-white p-6 md:p-8 shadow-sm ring-1 ring-black/5">
           <h1 className="text-2xl font-bold tracking-tight">Job chat</h1>
           <p className="mt-2 text-neutral-600">
-            Conversation for job <span className="font-mono text-neutral-900">#{id}</span>.
+            For job <span className="font-mono text-neutral-900">#{jobId}</span>.
           </p>
 
           <div className="mt-6 rounded-lg bg-neutral-100 p-4 text-neutral-600">
-            Realtime chat UI will appear here.
+            Job chat UI will render here (wired up later).
           </div>
         </div>
       </div>
