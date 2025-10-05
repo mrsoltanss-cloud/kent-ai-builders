@@ -1,0 +1,5 @@
+DATE: 20251005-192223
+DOMAIN: brixel.uk
+SCOPE: mrsoltanss-clouds-projects
+DEPLOYMENT_URL: kent-ai-builders-mkkxo8ef5-mrsoltanss-clouds-projects.vercel.app
+NOTE: Snapshot before adding "Back to my area" button.
