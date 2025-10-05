@@ -1,3 +1,4 @@
+import MobileAdjustments from '../components/MobileAdjustments';
 import ClientBoot from "@/components/ClientBoot";
 import Script from "next/script";
 import "./globals.css";
