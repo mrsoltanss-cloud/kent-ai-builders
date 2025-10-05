@@ -67,3 +67,4 @@
     padding-bottom: max(72px, calc(env(safe-area-inset-bottom) + 16px));
   }
 }
+@import '../styles/mobile-tweaks.css';
