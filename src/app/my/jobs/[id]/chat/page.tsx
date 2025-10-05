@@ -1,9 +1,37 @@
-// @ts-nocheck
-export default function ChatPage({ params }: { params: { id: string } }) {
+// 'use client' is required to use useParams()
+'use client';
+
+import * as React from 'react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+
+export default function ChatPage() {
+  const params = useParams() as { id?: string };
+  const id = params?.id ?? '';
+
   return (
-    <main className="mx-auto max-w-3xl px-4 py-10">
-      <h1 className="text-xl font-semibold">Messages for job {params.id}</h1>
-      <p className="mt-2 text-neutral-600">(Stub) Conversation with your matched builder.</p>
+    <main className="min-h-[70vh] px-4 py-10 bg-neutral-50">
+      <div className="mx-auto max-w-3xl">
+        <div className="mb-6">
+          <Link
+            href="/my-live"
+            className="inline-flex items-center gap-2 text-sm font-medium text-emerald-700 hover:text-emerald-800"
+          >
+            ← Back to dashboard
+          </Link>
+        </div>
+
+        <div className="rounded-2xl bg-white p-6 md:p-8 shadow-sm ring-1 ring-black/5">
+          <h1 className="text-2xl font-bold tracking-tight">Job chat</h1>
+          <p className="mt-2 text-neutral-600">
+            Conversation for job <span className="font-mono text-neutral-900">#{id}</span>.
+          </p>
+
+          <div className="mt-6 rounded-lg bg-neutral-100 p-4 text-neutral-600">
+            Realtime chat UI will appear here.
+          </div>
+        </div>
+      </div>
     </main>
   );
 }
