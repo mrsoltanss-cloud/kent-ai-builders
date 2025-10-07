@@ -1,6 +1,6 @@
 "use client";
-import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import SignOutButton from "./SignOutButton";
 
 export default function PortalSignOutOverlay() {
@@ -9,7 +9,7 @@ export default function PortalSignOutOverlay() {
   if (!mounted) return null;
 
   return createPortal(
-    <div className="fixed right-6 top-20 z-[1000]">
+    <div className="fixed right-4 top-4 z-[2000] pointer-events-auto">
       <SignOutButton />
     </div>,
     document.body
