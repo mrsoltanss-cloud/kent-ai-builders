@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* your custom globals can go below */
+
+/* ----------------------------------------------------------
+   Mobile Optimisations (non-destructive)
+   - Prevent fixed toasts/tickers overlapping content
+   - Improve strapline readability on small screens
+   ---------------------------------------------------------- */
+
+/* 1) Fixed toast/ticker: keep clear of header & edges */
+@media (max-width: 640px) {
+  /* catch common class names without knowing exact one */
+  [class*="toast"],
+  [class*="Toast"],
+  [class*="ticker"],
+  [class*="Ticker"],
+  [role="alert"][style*="position:fixed"],
+  [aria-live][style*="position:fixed"] {
+    /* position hygiene if it’s fixed */
+    top: clamp(10px, env(safe-area-inset-top) + 10px, 22px) !important;
+    left: 12px !important;
+    right: 12px !important;
+    max-width: calc(100vw - 24px);
+    z-index: 50;                     /* above content, below nav overlays */
+    border-radius: 14px;
+    line-height: 1.25;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    font-variant-numeric: lining-nums; /* tidy £1,234 formatting */
+  }
+
+  /* If a fixed banner exists at the top, create breathing room for the page */
+  /* :has is supported in modern Safari/Chrome; harmless elsewhere */
+  body:has([class*="toast"], [class*="Ticker"], [class*="ticker"], [role="alert"][style*="position:fixed"]) main,
+  body:has([class*="toast"], [class*="Ticker"], [class*="ticker"], [role="alert"][style*="position:fixed"]) #__next {
+    scroll-margin-top: 56px;
+  }
+}
+
+/* 2) Strapline readability (e.g. "Blueprint → AI thinking → …") */
+@media (max-width: 480px) {
+  /* apply to typical strap containers & generic fallbacks */
+  .strapline,
+  .how-it-works-strapline,
+  .subhead,
+  .subtitle,
+  .text-balance,
+  section [class*="strap"],
+  section [class*="subhead"],
+  section [class*="subtitle"] {
+    text-wrap: balance;
+    max-width: 26ch;      /* keep to 2–3 tidy lines */
+    margin-inline: auto;
+    text-align: center;
+    font-size: clamp(13px, 3.6vw, 16px);
+    line-height: 1.25;
+    letter-spacing: 0.1px;
+  }
+}
+
+/* 3) Avoid content being hidden behind any bottom fixed bar (if present) */
+@media (max-width: 640px) {
+  body:has([class*="sticky"], [class*="Sticky"], [class*="bottom"], [class*="Bottom"]) {
+    padding-bottom: max(72px, calc(env(safe-area-inset-bottom) + 16px));
+  }
+}
+@import '../styles/mobile-tweaks.css';

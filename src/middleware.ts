@@ -1,26 +1,27 @@
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+
+function isPublicPath(pathname: string) {
+  return (
+    pathname === "/quote/success" ||
+    pathname.startsWith("/quote/success") ||
+    pathname === "/dev-success-preview"
+  );
+}
 
 export function middleware(req: NextRequest) {
-  const url = req.nextUrl;
+  const { pathname } = req.nextUrl;
 
-  // 1) /me -> /my
-  if (url.pathname === '/me') {
-    const to = url.clone();
-    to.pathname = '/my';
-    return NextResponse.redirect(to);
-  }
+  // Allow the success/preview routes to pass through
+  if (isPublicPath(pathname)) return NextResponse.next();
 
-  // 2) Ensure sign-in carries a callback to our post-signin router
-  if (url.pathname === '/auth/signin' && !url.searchParams.has('callbackUrl')) {
-    const to = url.clone();
-    to.searchParams.set('callbackUrl', '/auth/post-signin');
-    return NextResponse.redirect(to);
-  }
+  // TODO: paste your original logic below if you had redirects/auth checks.
+  // For example:
+  // if (!authed) return NextResponse.redirect(new URL("/auth/signin", req.url));
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/me', '/auth/signin'],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
