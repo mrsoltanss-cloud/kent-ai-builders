@@ -3,245 +3,235 @@
 import { useMemo, useState } from "react";
 import { signOut } from "next-auth/react";
 
-// ──────────────────────────────────────────────────────────────
-// Lightweight types & demo data (UI-only; no persistence)
-// ──────────────────────────────────────────────────────────────
-type StageKey =
-  | "matched"
-  | "confirming"
-  | "survey"
-  | "estimate"
-  | "scheduled"
-  | "archived";
+/**
+ * Visual “vocabulary” for stages: label, emoji, and color classes (Tailwind)
+ */
+const STAGES = [
+  { key: "matched",           label: "Matched",           emoji: "✅", pill: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  { key: "confirming_scope",  label: "Confirming scope",  emoji: "📝", pill: "bg-sky-50 text-sky-700 border-sky-200" },
+  { key: "survey_booked",     label: "Survey booked",     emoji: "📅", pill: "bg-violet-50 text-violet-700 border-violet-200" },
+  { key: "estimate_ready",    label: "Estimate ready",    emoji: "📄", pill: "bg-amber-50 text-amber-700 border-amber-200" },
+  { key: "work_scheduled",    label: "Work scheduled",    emoji: "🛠️", pill: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  { key: "archived",          label: "Archived",          emoji: "🗄️", pill: "bg-zinc-50 text-zinc-700 border-zinc-200" },
+] as const;
 
-const STAGES: { key: StageKey; label: string }[] = [
-  { key: "matched",    label: "Matched" },
-  { key: "confirming", label: "Confirming scope" },
-  { key: "survey",     label: "Survey booked" },
-  { key: "estimate",   label: "Estimate ready" },
-  { key: "scheduled",  label: "Work scheduled" },
-  { key: "archived",   label: "Archived" },
-];
+type StageKey = typeof STAGES[number]["key"];
 
 type Lead = {
   id: string;
   ref: string;
   service: string;
   stage: StageKey;
-  progress: number; // 0–100
-  postcode?: string;
+  postcode: string;
 };
 
-const SEED: Lead[] = [
-  { id: "1", ref: "BK-X5NENKON", service: "Plastering",            stage: "scheduled", progress: 100 },
-  { id: "2", ref: "BK-YTORRETQ", service: "Kitchen Renovation",    stage: "scheduled", progress: 100 },
-  { id: "3", ref: "BK-P9K7AA12", service: "Loft Conversion",       stage: "survey",    progress: 60  },
-  { id: "4", ref: "BK-ZZ31MMQ2", service: "Bathroom Refurbishment",stage: "estimate",  progress: 80  },
-  { id: "5", ref: "BK-AB77CDE3", service: "Electrical",            stage: "scheduled", progress: 100 },
+const INITIAL: Lead[] = [
+  { id: "L1", ref: "BK-X5NENKON", service: "Plastering",            stage: "work_scheduled",   postcode: "CT1" },
+  { id: "L2", ref: "BK-YTORRETQ", service: "Kitchen Renovation",    stage: "work_scheduled",   postcode: "CT1" },
+  { id: "L3", ref: "BK-P9K7AA12", service: "Loft Conversion",       stage: "survey_booked",    postcode: "ME16" },
+  { id: "L4", ref: "BK-ZZ31MMQ2", service: "Bathroom Refurbishment",stage: "estimate_ready",   postcode: "TN9" },
+  { id: "L5", ref: "BK-AB77CDE3", service: "Electrical",            stage: "work_scheduled",   postcode: "DA1" },
 ];
 
-// Utility to get stage index
-const stageIndex = (k: StageKey) => STAGES.findIndex(s => s.key === k);
+function stageIndex(key: StageKey) {
+  return STAGES.findIndex((s) => s.key === key);
+}
 
-// ──────────────────────────────────────────────────────────────
-// Page
-// ──────────────────────────────────────────────────────────────
-export default function MyPortalPage() {
-  const [leads, setLeads] = useState<Lead[]>(SEED);
+function StagePill({ stage }: { stage: StageKey }) {
+  const s = STAGES[stageIndex(stage)];
+  return (
+    <span
+      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm font-medium ${s.pill}`}
+    >
+      <span aria-hidden>{s.emoji}</span>
+      {s.label}
+    </span>
+  );
+}
+
+function ProgressDots({ stage }: { stage: StageKey }) {
+  const idx = stageIndex(stage);
+  return (
+    <div className="flex items-center gap-2" aria-label={`Progress: ${Math.round(((idx+1)/STAGES.length)*100)}%`}>
+      <div className="flex items-center gap-1">
+        {STAGES.map((s, i) => (
+          <span
+            key={s.key}
+            className={`h-2.5 w-2.5 rounded-full ${i <= idx ? "bg-emerald-500" : "bg-zinc-300"}`}
+            aria-hidden
+          />
+        ))}
+      </div>
+      <span className="text-sm text-zinc-500 w-10 text-right">
+        {Math.round(((idx+1)/STAGES.length)*100)}%
+      </span>
+    </div>
+  );
+}
+
+function WhatsAppButton({ className = "" }: { className?: string }) {
+  return (
+    <a
+      href="https://wa.me/447713454032?text=Hi%20Brixel%2C%20I%27d%20like%20to%20discuss%20my%20job."
+      target="_blank"
+      rel="noreferrer noopener"
+      className={`inline-flex items-center justify-center rounded-md bg-emerald-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${className}`}
+    >
+      <span aria-hidden className="mr-2">💬</span>
+      Chat on WhatsApp
+    </a>
+  );
+}
+
+export default function Page() {
+  const [leads, setLeads] = useState<Lead[]>(INITIAL);
+  const [activeId, setActiveId] = useState<string | null>(leads[0]?.id ?? null);
+  const [tab, setTab] = useState<StageKey | "all">("all");
   const [query, setQuery] = useState("");
 
-  // Simple text filter over service/ref/postcode
+  const active = leads.find((l) => l.id === activeId) ?? leads[0];
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return leads;
-    return leads.filter(l =>
-      l.service.toLowerCase().includes(q) ||
-      l.ref.toLowerCase().includes(q) ||
-      (l.postcode?.toLowerCase().includes(q) ?? false)
-    );
-  }, [leads, query]);
+    return leads.filter((l) => {
+      const inTab = tab === "all" ? true : l.stage === tab;
+      if (!q) return inTab;
+      return (
+        inTab &&
+        (l.service.toLowerCase().includes(q) ||
+          l.ref.toLowerCase().includes(q) ||
+          l.postcode.toLowerCase().includes(q))
+      );
+    });
+  }, [leads, tab, query]);
 
-  // Move forward one step (kept for completeness)
-  const advance = (id: string) => {
-    setLeads(prev =>
-      prev.map(l => {
+  function moveBack(id: string) {
+    setLeads((curr) =>
+      curr.map((l) => {
         if (l.id !== id) return l;
-        const i = stageIndex(l.stage);
-        // if already archived, do nothing
-        if (l.stage === "archived" || i === -1) return l;
-        const next = Math.min(i + 1, STAGES.length - 1);
-        const nextKey = STAGES[next].key;
-        return {
-          ...l,
-          stage: nextKey,
-          progress: nextKey === "archived" ? l.progress : Math.min(100, Math.max(20, Math.round(((next + 1) / (STAGES.length - 1)) * 100))),
-        };
+        const idx = stageIndex(l.stage);
+        // Don't move back from "matched" or "archived"
+        if (l.stage === "archived" || idx <= 0) return l;
+        return { ...l, stage: STAGES[idx - 1].key as StageKey };
       })
     );
-  };
+  }
 
-  // ⭐ NEW: Move back one step
-  const moveBack = (id: string) => {
-    setLeads(prev =>
-      prev.map(l => {
-        if (l.id !== id) return l;
-        const i = stageIndex(l.stage);
-        if (i <= 0) return l; // already at first stage
-        const prevIdx = i - 1;
-        const prevKey = STAGES[prevIdx].key;
-        return {
-          ...l,
-          stage: prevKey,
-          progress: Math.min(100, Math.max(20, Math.round(((prevIdx + 1) / (STAGES.length - 1)) * 100))),
-        };
-      })
-    );
-  };
+  function archive(id: string) {
+    setLeads((curr) => curr.map((l) => (l.id === id ? { ...l, stage: "archived" } : l)));
+  }
 
-  // Archive & Delete keep working as before
-  const archive = (id: string) => {
-    setLeads(prev => prev.map(l => (l.id === id ? { ...l, stage: "archived" } : l)));
-  };
-  const remove = (id: string) => {
-    setLeads(prev => prev.filter(l => l.id !== id));
-  };
+  function remove(id: string) {
+    setLeads((curr) => curr.filter((l) => l.id !== id));
+    if (activeId === id) setActiveId(null);
+  }
 
-  const pills = [
+  const TABS: { key: StageKey | "all"; label: string }[] = [
     { key: "all", label: "All" },
-    { key: "matched", label: "Matched" },
-    { key: "confirming", label: "Confirming scope" },
-    { key: "survey", label: "Survey booked" },
-    { key: "estimate", label: "Estimate ready" },
-    { key: "scheduled", label: "Work scheduled" },
+    ...STAGES
+      .filter((s) => s.key !== "archived")
+      .map((s) => ({ key: s.key, label: s.label })),
     { key: "archived", label: "Archived" },
-  ] as const;
-
-  const [activeFilter, setActiveFilter] = useState<typeof pills[number]["key"]>("all");
-  const visible = filtered.filter(l => (activeFilter === "all" ? true : l.stage === activeFilter));
+  ];
 
   return (
     <>
-      {/* Header row with title + Sign out */}
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-semibold">My Portal</h1>
-        <button
-          onClick={() => signOut({ callbackUrl: "/" })}
-          className="rounded-full bg-emerald-600 text-white px-3 py-1.5 text-sm font-medium hover:bg-emerald-700 transition-colors"
-        >
-          Sign out
-        </button>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        {pills.map(p => (
+      {/* Header */}
+      <div className="mx-auto max-w-6xl px-4 pt-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold text-zinc-900">My Portal</h1>
           <button
-            key={p.key}
-            onClick={() => setActiveFilter(p.key)}
-            className={`px-3 py-1.5 rounded-full text-sm border ${
-              activeFilter === p.key ? "bg-emerald-600 text-white border-emerald-600" : "bg-white hover:bg-gray-50"
-            }`}
+            onClick={() => signOut({ callbackUrl: "/" })}
+            className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           >
-            {p.label}
+            <span aria-hidden>↪</span> Sign out
           </button>
-        ))}
+        </div>
 
-        <div className="ml-auto w-full sm:w-80">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by service, ref or postcode"
-            className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
-          />
+        {/* Tabs */}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {TABS.map((t) => {
+            const is = tab === t.key;
+            return (
+              <button
+                key={String(t.key)}
+                onClick={() => setTab(t.key)}
+                className={`rounded-full border px-3 py-1.5 text-sm ${is
+                  ? "border-zinc-900 bg-zinc-900 text-white"
+                  : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                  }`}
+              >
+                {t.label}
+              </button>
+            );
+          })}
+          <div className="ml-auto">
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by service, ref or postcode"
+              className="w-[320px] rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm outline-none placeholder:text-zinc-400 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
+            />
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 mt-6">
+      {/* Content */}
+      <div className="mx-auto max-w-6xl px-4 pb-12 pt-4 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
         {/* List */}
-        <div className="space-y-4">
-          {visible.map((l) => {
-            const i = stageIndex(l.stage);
-            const canMoveBack = i > 0;
-
+        <div className="flex flex-col gap-4">
+          {filtered.map((l) => {
+            const isActive = l.id === active?.id;
             return (
-              <div key={l.id} className="rounded-xl border bg-white p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="text-sm text-gray-500">Ref {l.ref}</div>
-                    <span className={`text-xs rounded-full px-2 py-0.5 border ${l.stage === "scheduled" ? "border-emerald-200 text-emerald-700 bg-emerald-50" : "border-gray-200 text-gray-700 bg-gray-50"}`}>
-                      {STAGES[i]?.label}
-                    </span>
-                  </div>
-
-                  {/* progress dots */}
-                  <div className="flex items-center gap-1" aria-label={`Progress: ${l.progress}%`}>
-                    {STAGES.slice(0, STAGES.length - 1).map((_, dot) => (
-                      <span
-                        key={dot}
-                        className={`h-2 w-2 rounded-full ${dot <= i ? "bg-emerald-500" : "bg-gray-200"}`}
-                      />
-                    ))}
-                    <span className="ml-2 text-xs text-gray-500">{l.progress}%</span>
+              <div
+                key={l.id}
+                className={`rounded-xl border p-4 shadow-sm bg-white ${isActive ? "border-emerald-300" : "border-zinc-200"}`}
+              >
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={() => setActiveId(l.id)}
+                    className="text-lg font-semibold text-emerald-800 hover:underline"
+                  >
+                    {l.service}
+                  </button>
+                  <span className="text-sm text-zinc-400">Ref {l.ref}</span>
+                  <StagePill stage={l.stage} />
+                  <div className="ml-auto">
+                    <ProgressDots stage={l.stage} />
                   </div>
                 </div>
 
-                <div className="mt-1 text-base font-medium">{l.service}</div>
-
-                {/* Actions row */}
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <a
-                    href="https://wa.me/447700900000?text=Hi%20Brixel%2C%20I%27d%20like%20help%20with%20my%20job."
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center rounded-lg bg-emerald-600 text-white px-3 py-1.5 text-sm font-medium hover:bg-emerald-700"
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <WhatsAppButton />
+                  <button
+                    onClick={() => setActiveId(l.id)}
+                    className="rounded-md border border-zinc-200 bg-white px-3.5 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
                   >
-                    Chat on WhatsApp
-                  </a>
+                    View details
+                  </button>
 
-                  {/* Example row-specific actions (kept from prior design) */}
-                  {l.stage === "scheduled" ? (
-                    <button className="rounded-lg border px-3 py-1.5 text-sm hover:bg-gray-50">View booking</button>
-                  ) : l.stage === "estimate" ? (
-                    <button onClick={() => advance(l.id)} className="rounded-lg border px-3 py-1.5 text-sm hover:bg-gray-50">
-                      Approve estimate
-                    </button>
-                  ) : l.stage === "survey" ? (
-                    <button onClick={() => advance(l.id)} className="rounded-lg border px-3 py-1.5 text-sm hover:bg-gray-50">
-                      Confirm scope
-                    </button>
-                  ) : l.stage === "confirming" ? (
-                    <div className="flex gap-2">
-                      <button onClick={() => advance(l.id)} className="rounded-lg border px-3 py-1.5 text-sm hover:bg-gray-50">
-                        Book a survey
-                      </button>
-                      <button onClick={() => advance(l.id)} className="rounded-lg border px-3 py-1.5 text-sm hover:bg-gray-50">
-                        Book survey
-                      </button>
-                    </div>
-                  ) : (
-                    <button onClick={() => advance(l.id)} className="rounded-lg border px-3 py-1.5 text-sm hover:bg-gray-50">
-                      View details
+                  {/* Move back (styled + arrow) */}
+                  {l.stage !== "archived" && stageIndex(l.stage) > 0 && (
+                    <button
+                      onClick={() => moveBack(l.id)}
+                      className="inline-flex items-center gap-2 rounded-md border border-zinc-300 bg-white px-3.5 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+                      title="Revert one step"
+                    >
+                      <span aria-hidden>↩</span>
+                      Move back
                     </button>
                   )}
 
-                  {/* ⭐ NEW: Move back one step */}
                   <button
-                    onClick={() => moveBack(l.id)}
-                    disabled={!canMoveBack}
-                    className={`inline-flex items-center rounded-lg px-3 py-1.5 text-sm border ${
-                      canMoveBack ? "hover:bg-gray-50" : "opacity-40 cursor-not-allowed"
-                    }`}
-                    title={canMoveBack ? "Move back one step" : "Already at the first stage"}
+                    onClick={() => archive(l.id)}
+                    className="rounded-md border border-zinc-200 bg-white px-3.5 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
                   >
-                    ← Move back
-                  </button>
-
-                  <button onClick={() => archive(l.id)} className="rounded-lg border px-3 py-1.5 text-sm hover:bg-gray-50">
                     Archive
                   </button>
                   <button
                     onClick={() => remove(l.id)}
-                    className="rounded-lg border border-red-200 text-red-600 px-3 py-1.5 text-sm hover:bg-red-50"
+                    className="rounded-md border border-rose-200 bg-rose-50 px-3.5 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100"
                   >
                     Delete
                   </button>
@@ -249,56 +239,56 @@ export default function MyPortalPage() {
               </div>
             );
           })}
+
+          {filtered.length === 0 && (
+            <div className="rounded-xl border border-zinc-200 bg-white p-8 text-center text-zinc-500">
+              No results.
+            </div>
+          )}
         </div>
 
-        {/* Right column (kept the same) */}
-        <aside className="hidden lg:block">
-          <div className="sticky top-6 space-y-4">
-            <div className="rounded-xl border bg-white p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm text-gray-500">Plastering</div>
-                  <div className="text-xs text-gray-500">Ref BK-X5NENKON · CT1</div>
-                </div>
-                <span className="text-xs rounded-full px-2 py-0.5 border border-emerald-200 text-emerald-700 bg-emerald-50">
-                  Work scheduled
-                </span>
-              </div>
-
-              <a
-                href="https://wa.me/447700900000?text=Hi%20Brixel%2C%20I%27d%20like%20to%20go%20ahead%20please."
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3 inline-flex items-center rounded-lg bg-emerald-600 text-white px-3 py-1.5 text-sm font-medium hover:bg-emerald-700"
-              >
-                Chat on WhatsApp
-              </a>
-
-              <div className="mt-4">
-                <div className="font-medium mb-2">What happens next</div>
-                <ul className="space-y-2 text-sm text-gray-700">
-                  <li>💬 Chat to us on WhatsApp — you’ll be routed to a specialist in minutes.</li>
-                  <li>📍 You’re matched — vetted local builder assigned.</li>
-                  <li>📅 Book your site survey — pick a time that suits you.</li>
-                  <li>🧾 Get your estimate — we confirm the scope and share your price.</li>
-                  <li>🛠️ Schedule the work — agree a start date; covered by our guarantee.</li>
-                </ul>
-
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <span className="text-xs rounded-full px-2 py-0.5 border bg-gray-50">DBS-checked</span>
-                  <span className="text-xs rounded-full px-2 py-0.5 border bg-gray-50">£5m Public Liability</span>
-                  <span className="text-xs rounded-full px-2 py-0.5 border bg-gray-50">12-month guarantee</span>
-                </div>
+        {/* Sidebar */}
+        <aside className="rounded-xl border border-zinc-200 bg-white p-4 h-fit sticky top-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-lg font-semibold text-zinc-900">{active?.service ?? "—"}</div>
+              <div className="mt-1 text-xs text-zinc-400">
+                Ref {active?.ref ?? "—"} · {active?.postcode ?? "—"}
               </div>
             </div>
+            {active && <StagePill stage={active.stage} />}
+          </div>
 
-            <div className="rounded-xl border bg-white p-4">
-              <div className="font-medium mb-2">Why homeowners choose us</div>
-              <ul className="space-y-2 text-sm text-gray-700">
-                <li>🤖 Instant AI-powered quotes</li>
-                <li>✅ Vetted local builders you can trust</li>
-                <li>🛡️ £5m insurance · 12-month guarantee · DBS-checked teams</li>
-              </ul>
+          <div className="mt-4">
+            <WhatsAppButton className="w-full" />
+          </div>
+
+          <div className="mt-4">
+            <button
+              onClick={() => active && setActiveId(active.id)}
+              className="w-full rounded-md border border-zinc-200 bg-white px-3.5 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+            >
+              View details
+            </button>
+          </div>
+
+          <div className="mt-5 rounded-lg border border-zinc-100 bg-zinc-50 p-4">
+            <div className="text-sm font-semibold text-zinc-900">What happens next</div>
+            <ul className="mt-2 space-y-2 text-sm text-zinc-700">
+              <li><span className="mr-2" aria-hidden>💬</span> Chat to us on WhatsApp — you’ll be routed to a specialist in minutes.</li>
+              <li><span className="mr-2" aria-hidden>📍</span> You’re matched — vetted local builder assigned.</li>
+              <li><span className="mr-2" aria-hidden>📅</span> Book your site survey — pick a time that suits you.</li>
+              <li><span className="mr-2" aria-hidden>📄</span> Get your estimate — we confirm the scope and share your price.</li>
+              <li><span className="mr-2" aria-hidden>🛠️</span> Schedule the work — agree a start date; covered by our guarantee.</li>
+            </ul>
+            <div className="mt-3 text-xs text-zinc-500">
+              Fastest reply during working hours. Typical response: under 10 minutes.
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs text-zinc-700">DBS-checked</span>
+              <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs text-zinc-700">£5m Public Liability</span>
+              <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs text-zinc-700">12-month guarantee</span>
             </div>
           </div>
         </aside>
