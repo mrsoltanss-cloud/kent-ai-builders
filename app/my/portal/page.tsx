@@ -88,7 +88,7 @@ const Chip = ({ children, tone = "default" }: { children: React.ReactNode; tone?
       {children}
     </span>
   );
-};
+}
 const Btn = ({ children, onClick, tone="default", title }: {children:React.ReactNode; onClick?:()=>void; tone?: "default"|"danger"; title?:string}) => {
   const cls = tone==="danger"
     ? "border-rose-300 text-rose-700 hover:bg-rose-50"
@@ -100,7 +100,7 @@ const Btn = ({ children, onClick, tone="default", title }: {children:React.React
       {children}
     </button>
   );
-};
+}
 /** Primary green CTA (for WhatsApp) */
 /** ----- Modal for details ----- */
 function DetailsModal({open, onClose, lead}:{open:boolean; onClose:()=>void; lead: Lead|null}) {
@@ -212,7 +212,7 @@ export default function PortalPage() {
       if (l.stage === "archived" && dir === 1) j = i; // no forward from archived
       return { ...l, stage: STAGES[j].key };
     }));
-  };
+}
   const archive = (id: string) => setLeads(prev => prev.map(l => l.id===id ? ({...l, stage: "archived"}) : l));
   const del = (id: string) => setLeads(prev => prev.filter(l => l.id !== id));
 
