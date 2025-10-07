@@ -1,6 +1,7 @@
 "use client";
+import PortalSignOutOverlay from '../../../components/PortalSignOutOverlay';
+
 import React from "react";
-import SignOutButton from '../../../components/SignOutButton';
 
 /**
  * Demo My-Portal page with Details modal
@@ -161,7 +162,10 @@ function ProgressDots({ stage }: { stage: StageKey }) {
   const idx = STAGE_INDEX[stage];
   return (
   <> <>
-    <>
+    <PortalSignOutOverlay />
+  <>
+    <PortalSignOutOverlay />
+
     <div className="flex items-center gap-1" aria-label={`Progress: ${((idx+1)/STAGES.length*100)|0}%`}>
       {STAGES.map((s, i) => (
         <span
@@ -420,10 +424,7 @@ export default function MyPortalDemo() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
-      <div className="flex items-center justify-between gap-3">
-  <h1 className="text-2xl font-semibold">My Portal</h1>
-  <SignOutButton />
-</div>
+      <h1 className="text-2xl font-semibold">My Portal</h1>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: list & controls */}
         <div className="lg:col-span-2">
