@@ -160,9 +160,7 @@ function waLink(req: Request) {
 
 function ProgressDots({ stage }: { stage: StageKey }) {
   const idx = STAGE_INDEX[stage];
-  return ( <>
-    <PortalSignOutOverlay />
-  <>
+  return (
     <PortalSignOutOverlay />
 
     <div className="flex items-center gap-1" aria-label={`Progress: ${((idx+1)/STAGES.length*100)|0}%`}>
@@ -178,9 +176,7 @@ function ProgressDots({ stage }: { stage: StageKey }) {
       ))}
       <span className="ml-2 text-xs text-gray-500">{Math.round(((idx+1)/STAGES.length)*100)}%</span>
     </div>
-  
-  </>
-  </>);
+  );
 }
 
 type Toast = { id: string; message: string; action?: { label: string; onClick: () => void } };
