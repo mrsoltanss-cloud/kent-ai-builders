@@ -1,4 +1,6 @@
 "use client";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 import HomeAiShowcase from "@/components/home/HomeAiShowcase";
 import HowItWorksShow from "@/components/home/HowItWorksShow";
 /* eslint-disable react-hooks/exhaustive-deps */
