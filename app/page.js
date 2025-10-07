@@ -15,22 +15,42 @@ import TrustHero from "@/components/TrustHero";
 import HowItWorksBlock from "@/components/home/HowItWorksBlock";
 
 export default function Home() {
-  const suggestions = ["Leaky roof","Wall needs repointing","Kitchen renovation","Emergency plumber"];
-  <QuickLinksCategories />
+  const suggestions = [
+    "Leaky roof",
+    "Wall needs repointing",
+    "Kitchen renovation",
+    "Emergency plumber",
+  ];
+  <QuickLinksCategories />;
   const [sIndex, setSIndex] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setSIndex(i => (i + 1) % suggestions.length), 2400);
+    const id = setInterval(
+      () => setSIndex((i) => (i + 1) % suggestions.length),
+      2400,
+    );
     return () => clearInterval(id);
   }, []);
 
   const reviews = [
-    { quote: "They handled the extension from start to finish. Stress-free.", name: "Mark, Medway" },
-    { quote: "Fair price, tidy team, and kept us informed daily.", name: "Amelia, Tonbridge" },
-    { quote: "Emergency leak sorted within hours. Brilliant.", name: "Tom, Sevenoaks" },
+    {
+      quote: "They handled the extension from start to finish. Stress-free.",
+      name: "Mark, Medway",
+    },
+    {
+      quote: "Fair price, tidy team, and kept us informed daily.",
+      name: "Amelia, Tonbridge",
+    },
+    {
+      quote: "Emergency leak sorted within hours. Brilliant.",
+      name: "Tom, Sevenoaks",
+    },
   ];
   const [rIndex, setRIndex] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setRIndex(i => (i + 1) % reviews.length), 3800);
+    const id = setInterval(
+      () => setRIndex((i) => (i + 1) % reviews.length),
+      3800,
+    );
     return () => clearInterval(id);
   }, []);
 
@@ -46,31 +66,35 @@ export default function Home() {
     { key: "bathrooms", label: "Bathrooms", emoji: "🛁" },
   ];
   const scroller = useRef(null);
-  const scrollBy = (px) => scroller.current?.scrollBy({ left: px, behavior: "smooth" });
+  const scrollBy = (px) =>
+    scroller.current?.scrollBy({ left: px, behavior: "smooth" });
 
   return (
     <main className="min-h-screen bg-white text-slate-900">
-  {/* HEADER */}
+      {/* HEADER */}
       <header className="sticky top-0 z-40 w-full border-b bg-white/90 backdrop-blur">
-  <div className="mx-auto max-w-6xl px-4 h-16 flex items-center justify-between">
-    {/* Left: brand / logo */}
-    <div className="flex items-center gap-2">
-      
-      <Link href="/" className="font-semibold text-base">Brixel</Link>
-    </div>
+        <div className="mx-auto max-w-6xl px-4 h-16 flex items-center justify-between">
+          {/* Left: brand / logo */}
+          <div className="flex items-center gap-2">
+            <Link href="/" className="font-semibold text-base">
+              Brixel
+            </Link>
+          </div>
 
-    {/* Middle: nav */}
-    <nav className="hidden md:flex items-center gap-8 text-[15px]">
-      <Link href="/#homeowner" className="hover:opacity-80">Homeowner</Link>
-      <Link href="/#trades" className="hover:opacity-80">Trades</Link>
-    </nav>
+          {/* Middle: nav */}
+          <nav className="hidden md:flex items-center gap-8 text-[15px]">
+            <Link href="/#homeowner" className="hover:opacity-80">
+              Homeowner
+            </Link>
+            <Link href="/#trades" className="hover:opacity-80">
+              Trades
+            </Link>
+          </nav>
 
-    {/* Right: actions */}
-    <HeaderActions />
-  </div>
-</header>
-
-
+          {/* Right: actions */}
+          <HeaderActions />
+        </div>
+      </header>
 
       {/* HERO */}
       <section className="relative overflow-hidden">
@@ -98,7 +122,10 @@ export default function Home() {
             onSubmit={(e) => {
               e.preventDefault();
               const input = e.currentTarget.elements.namedItem("q");
-              const value = input && typeof input.value === "string" ? input.value.trim() : "";
+              const value =
+                input && typeof input.value === "string"
+                  ? input.value.trim()
+                  : "";
               const q = value || suggestions[sIndex];
               window.location.href = `/quote?query=${encodeURIComponent(q)}`;
             }}
@@ -125,16 +152,23 @@ export default function Home() {
           </form>
 
           <div className="mt-5 sm:mt-6 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center md:justify-start">
-            <Link href="/quote" className="w-full sm:w-auto text-center rounded-xl bg-teal-600 text-white px-5 py-3 font-semibold hover:bg-teal-700">
+            <Link
+              href="/quote"
+              className="w-full sm:w-auto text-center rounded-xl bg-teal-600 text-white px-5 py-3 font-semibold hover:bg-teal-700"
+            >
               Get My Instant Estimate
             </Link>
-            <a href="https://wa.me/447000000000" className="w-full sm:w-auto text-center rounded-xl border border-white text-white px-5 py-3 font-semibold hover:bg-white hover:text-teal-700">
+            <a
+              href="https://wa.me/447000000000"
+              className="w-full sm:w-auto text-center rounded-xl border border-white text-white px-5 py-3 font-semibold hover:bg-white hover:text-teal-700"
+            >
               Talk on WhatsApp
             </a>
           </div>
 
           <p className="mt-4 text-white/80 text-xs sm:text-sm">
-            ★★★★★ Trusted by 2,000+ Kent homeowners • Fully Insured • Free Site Survey
+            ★★★★★ Trusted by 2,000+ Kent homeowners • Fully Insured • Free Site
+            Survey
           </p>
         </div>
       </section>
@@ -163,14 +197,28 @@ export default function Home() {
         <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-14 grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10 items-center">
           <div className="grid grid-cols-2 gap-3 sm:gap-4 order-2 md:order-1">
             <div className="relative h-40 sm:h-48 md:h-64 rounded-2xl overflow-hidden bg-white/5">
-              <Image src="/images/trust-handshake.jpg" alt="Handshake" fill sizes="(max-width: 768px) 50vw, 33vw" className="object-cover" />
+              <Image
+                src="/images/trust-handshake.jpg"
+                alt="Handshake"
+                fill
+                sizes="(max-width: 768px) 50vw, 33vw"
+                className="object-cover"
+              />
             </div>
             <div className="relative h-40 sm:h-48 md:h-64 rounded-2xl overflow-hidden bg-white/5">
-              <Image src="/images/trust-team.jpg" alt="Team on site" fill sizes="(max-width: 768px) 50vw, 33vw" className="object-cover" />
+              <Image
+                src="/images/trust-team.jpg"
+                alt="Team on site"
+                fill
+                sizes="(max-width: 768px) 50vw, 33vw"
+                className="object-cover"
+              />
             </div>
           </div>
           <div className="order-1 md:order-2">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold">Why homeowners trust us</h2>
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold">
+              Why homeowners trust us
+            </h2>
             <ul className="mt-3 sm:mt-4 space-y-1.5 sm:space-y-2 text-gray-200 text-sm sm:text-base">
               <li>🤖 Instant, fair AI-powered pricing</li>
               <li>🧑‍🔧 Verified, experienced local builders</li>
@@ -183,18 +231,37 @@ export default function Home() {
                 { big: "4.9/5", small: "Avg rating" },
                 { big: "10+ yrs", small: "Experience" },
               ].map((s, i) => (
-                <div key={i} className="rounded-xl bg-white/5 px-3 sm:px-4 py-3 sm:py-4 text-center">
+                <div
+                  key={i}
+                  className="rounded-xl bg-white/5 px-3 sm:px-4 py-3 sm:py-4 text-center"
+                >
                   <div className="text-lg sm:text-2xl font-bold">{s.big}</div>
-                  <div className="text-[11px] sm:text-sm text-gray-300">{s.small}</div>
+                  <div className="text-[11px] sm:text-sm text-gray-300">
+                    {s.small}
+                  </div>
                 </div>
               ))}
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              {["DBS-checked teams","£5m Public Liability","NICEIC / Gas Safe","CSCS qualified","12-month workmanship guarantee"].map((b, i) => (
-                <span key={i} className="rounded-full bg-white/10 px-3 py-1 text-xs sm:text-sm">{b}</span>
+              {[
+                "DBS-checked teams",
+                "£5m Public Liability",
+                "NICEIC / Gas Safe",
+                "CSCS qualified",
+                "12-month workmanship guarantee",
+              ].map((b, i) => (
+                <span
+                  key={i}
+                  className="rounded-full bg-white/10 px-3 py-1 text-xs sm:text-sm"
+                >
+                  {b}
+                </span>
               ))}
             </div>
-            <Link href="/quote" className="inline-block mt-5 rounded-xl bg-teal-500 text-white px-5 py-3 font-semibold hover:bg-teal-600">
+            <Link
+              href="/quote"
+              className="inline-block mt-5 rounded-xl bg-teal-500 text-white px-5 py-3 font-semibold hover:bg-teal-600"
+            >
               Get your instant estimate →
             </Link>
           </div>
@@ -202,24 +269,29 @@ export default function Home() {
       </section>
 
       {/* TESTIMONIALS */}
-      
 
-<TrustSection />
-<section className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-14">
-        
-
-{/* Epic How it works slideshow */}
-<HowItWorksBlock />
-<h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-center text-teal-600">What our customers say</h2>
+      <TrustSection />
+      <section className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-14">
+        {/* Epic How it works slideshow */}
+        <HowItWorksBlock />
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-center text-teal-600">
+          What our customers say
+        </h2>
         <div className="mt-6 sm:mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-          {[0,1,2].map(offset => {
+          {[0, 1, 2].map((offset) => {
             const i = (rIndex + offset) % reviews.length;
             const r = reviews[i];
             return (
-              <div key={i} className="rounded-3xl border p-4 sm:p-6 hover:border-teal-500">
-                
-                <p className="mt-2 sm:mt-3 text-gray-800 text-sm sm:text-base">“{r.quote}”</p>
-                <p className="mt-2 sm:mt-3 text-xs sm:text-sm text-gray-500">{r.name}</p>
+              <div
+                key={i}
+                className="rounded-3xl border p-4 sm:p-6 hover:border-teal-500"
+              >
+                <p className="mt-2 sm:mt-3 text-gray-800 text-sm sm:text-base">
+                  “{r.quote}”
+                </p>
+                <p className="mt-2 sm:mt-3 text-xs sm:text-sm text-gray-500">
+                  {r.name}
+                </p>
               </div>
             );
           })}
@@ -227,24 +299,36 @@ export default function Home() {
       </section>
 
       {/* GUIDES */}
-      
-{/* AI Showcase (replaces Cost guides block) */}
-<section><HomeAiShowcase/>
-</section>
 
+      {/* AI Showcase (replaces Cost guides block) */}
+      <section>
+        <HomeAiShowcase />
+      </section>
 
       {/* ACTION CARDS */}
-      
-
 
       {/* FINAL CTA */}
       <section className="bg-teal-700 text-white">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-14 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold">Ready to build smarter?</h2>
-          <p className="mt-2 text-white/90 text-sm sm:text-base">Kent’s only AI-powered builder. Get your instant estimate today.</p>
+          <h2 className="text-2xl sm:text-3xl font-bold">
+            Ready to build smarter?
+          </h2>
+          <p className="mt-2 text-white/90 text-sm sm:text-base">
+            Kent’s only AI-powered builder. Get your instant estimate today.
+          </p>
           <div className="mt-6 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
-            <Link href="/quote" className="rounded-xl bg-white text-teal-700 px-6 py-3 font-semibold hover:bg-gray-100">Get My Instant Estimate</Link>
-            <a href="https://wa.me/447000000000" className="rounded-xl border border-white text-white px-6 py-3 font-semibold hover:bg-white hover:text-teal-700">Talk on WhatsApp</a>
+            <Link
+              href="/quote"
+              className="rounded-xl bg-white text-teal-700 px-6 py-3 font-semibold hover:bg-gray-100"
+            >
+              Get My Instant Estimate
+            </Link>
+            <a
+              href="https://wa.me/447000000000"
+              className="rounded-xl border border-white text-white px-6 py-3 font-semibold hover:bg-white hover:text-teal-700"
+            >
+              Talk on WhatsApp
+            </a>
           </div>
         </div>
       </section>
@@ -259,16 +343,20 @@ export default function Home() {
           </div>
           <div>
             <h4 className="font-semibold">Service Areas</h4>
-            <p className="mt-2 text-white/80 text-sm">Kent • Maidstone • Canterbury • Ashford • Medway</p>
+            <p className="mt-2 text-white/80 text-sm">
+              Kent • Maidstone • Canterbury • Ashford • Medway
+            </p>
           </div>
           <div>
             <h4 className="font-semibold">Trust</h4>
-            <p className="mt-2 text-white/80 text-sm">🛡 Fully insured & guaranteed</p>
+            <p className="mt-2 text-white/80 text-sm">
+              🛡 Fully insured & guaranteed
+            </p>
             <p className="text-white/60 text-sm mt-2">© Brixel 2025</p>
           </div>
         </div>
       </footer>
       <TrustHero />
-        </main>
+    </main>
   );
 }
