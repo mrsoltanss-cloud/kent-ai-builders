@@ -1,27 +1,15 @@
-import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
-
-function isPublicPath(pathname: string) {
-  return (
-    pathname === "/quote/success" ||
-    pathname.startsWith("/quote/success") ||
-    pathname === "/dev-success-preview"
-  );
-}
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
 export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
-
-  // Allow the success/preview routes to pass through
-  if (isPublicPath(pathname)) return NextResponse.next();
-
-  // TODO: paste your original logic below if you had redirects/auth checks.
-  // For example:
-  // if (!authed) return NextResponse.redirect(new URL("/auth/signin", req.url));
-
-  return NextResponse.next();
+  const p = req.nextUrl.pathname
+  if (p === '/my' || p === '/me' || p === '/homeowner') {
+    const url = req.nextUrl.clone()
+    url.pathname = '/my/portal'
+    return NextResponse.redirect(url)
+  }
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
-};
+  matcher: ['/my', '/me', '/homeowner'],
+}
