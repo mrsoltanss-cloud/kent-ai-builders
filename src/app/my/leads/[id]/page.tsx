@@ -78,7 +78,7 @@ export default async function LeadDetail({
           <div className="flex items-center justify-between gap-4">
             <div className="space-y-1">
               <nav className="text-sm text-zinc-600">
-                <Link href="/my" className="hover:text-emerald-700">My Dashboard</Link>
+                <Link href="/my/portal" className="hover:text-emerald-700">My Dashboard</Link>
                 <span className="px-2">/</span>
                 <span className="text-zinc-900">Lead {shortId}</span>
               </nav>
@@ -103,7 +103,7 @@ export default async function LeadDetail({
                 Add photos / details
               </Link>
               <Link
-                href="/my"
+                href="/my/portal"
                 className="inline-flex items-center rounded-xl border border-zinc-300 bg-white px-4 py-2 text-zinc-700 hover:bg-zinc-50"
               >
                 Back to dashboard

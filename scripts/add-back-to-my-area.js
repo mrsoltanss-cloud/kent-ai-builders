@@ -71,7 +71,7 @@ function insertAfterEmailButton(src) {
 
   const snippet = `
 <Link
-  href="/my"
+  href="/my/portal"
   className="inline-flex items-center rounded-xl border border-zinc-300 bg-white px-4 py-2 text-zinc-700 hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-emerald-300"
 >
   Back to my area
