@@ -1,351 +1,237 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import { signOut } from "next-auth/react";
 
-/** Stage config (emoji + pill color) */
-const STAGES = [
-  { key: "matched",           label: "Matched",           emoji: "✅", pill: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  { key: "confirming_scope",  label: "Confirming scope",  emoji: "📝", pill: "bg-sky-50 text-sky-700 border-sky-200" },
-  { key: "survey_booked",     label: "Survey booked",     emoji: "📅", pill: "bg-violet-50 text-violet-700 border-violet-200" },
-  { key: "estimate_ready",    label: "Estimate ready",    emoji: "📄", pill: "bg-amber-50 text-amber-700 border-amber-200" },
-  { key: "work_scheduled",    label: "Work scheduled",    emoji: "🛠️", pill: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  { key: "archived",          label: "Archived",          emoji: "🗄️", pill: "bg-zinc-50 text-zinc-700 border-zinc-200" },
-] as const;
-type StageKey = typeof STAGES[number]["key"];
+/** ----- Stages & helpers ----- */
+type StageKey = "matched" | "confirming" | "survey_booked" | "estimate_ready" | "work_scheduled" | "archived";
+const STAGES: { key: StageKey; label: string; emoji: string }[] = [
+  { key: "matched",         label: "Matched",          emoji: "✅" },
+  { key: "confirming",      label: "Confirming scope", emoji: "📝" },
+  { key: "survey_booked",   label: "Survey booked",    emoji: "📅" },
+  { key: "estimate_ready",  label: "Estimate ready",   emoji: "📄" },
+  { key: "work_scheduled",  label: "Work scheduled",   emoji: "🛠️" },
+  { key: "archived",        label: "Archived",         emoji: "📦" },
+];
+const idxOf = (k: StageKey) => STAGES.findIndex(s => s.key === k);
+const stagePct = (k: StageKey) => Math.round(((idxOf(k)+1) / (STAGES.length-1)) * 100); // archived not counted in dots
 
+/** ----- Demo data (client only) ----- */
 type Lead = {
   id: string;
   ref: string;
   service: string;
-  stage: StageKey;
   postcode: string;
-};
-
-const INITIAL: Lead[] = [
-  { id: "L1", ref: "BK-X5NENKON", service: "Plastering",             stage: "archived",         postcode: "CT1" },
-  { id: "L2", ref: "BK-YTORRETQ", service: "Kitchen Renovation",     stage: "work_scheduled",   postcode: "CT1" },
-  { id: "L3", ref: "BK-P9K7AA12", service: "Loft Conversion",        stage: "survey_booked",    postcode: "ME16" },
-  { id: "L4", ref: "BK-ZZ31MMQ2", service: "Bathroom Refurbishment", stage: "estimate_ready",   postcode: "TN9" },
-  { id: "L5", ref: "BK-AB77CDE3", service: "Electrical",             stage: "work_scheduled",   postcode: "DA1" },
+  stage: StageKey;
+}
+const seed: Lead[] = [
+  { id: "1", ref: "BK-X5NENKON", service: "Plastering",            postcode: "CT1", stage: "archived" },
+  { id: "2", ref: "BK-YTORRETQ", service: "Kitchen Renovation",     postcode: "CT2", stage: "estimate_ready" },
+  { id: "3", ref: "BK-P9K7AA12", service: "Loft Conversion",        postcode: "ME7", stage: "survey_booked" },
+  { id: "4", ref: "BK-ZZ31MMQ2", service: "Bathroom Refurbishment", postcode: "TN24", stage: "estimate_ready" },
+  { id: "5", ref: "BK-AB77CDE3", service: "Electrical",             postcode: "DA1", stage: "work_scheduled" },
 ];
 
-function stageIndex(key: StageKey) {
-  return STAGES.findIndex((s) => s.key === key);
-}
-
-/** What the forward button should say + where it goes next */
-const FORWARD: Record<StageKey, { label: string; next?: StageKey }> = {
-  matched:           { label: "Confirm scope",  next: "confirming_scope" },
-  confirming_scope:  { label: "Book survey",    next: "survey_booked" },
-  survey_booked:     { label: "Get estimate",   next: "estimate_ready" },
-  estimate_ready:    { label: "Approve estimate", next: "work_scheduled" },
-  work_scheduled:    { label: "View booking",   next: undefined }, // final stage (no advance)
-  archived:          { label: "—",              next: undefined },
-};
-
-function StagePill({ stage }: { stage: StageKey }) {
-  const s = STAGES[stageIndex(stage)];
+/** Small UI atoms */
+const Chip = ({ children, tone = "default" }: { children: React.ReactNode; tone?: "default"|"green"|"amber"|"slate" }) => {
+  const tones: Record<string,string> = {
+    default: "border-slate-300 text-slate-700 bg-white",
+    green:   "border-emerald-300 text-emerald-800 bg-emerald-50",
+    amber:   "border-amber-300 text-amber-800 bg-amber-50",
+    slate:   "border-slate-300 text-slate-700 bg-slate-50",
+  };
   return (
-    <span
-      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm font-medium ${s.pill}`}
-    >
-      <span aria-hidden>{s.emoji}</span>
-      {s.label}
+    <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm ${tones[tone]}`}>
+      {children}
     </span>
   );
-}
-
-function ProgressDots({ stage }: { stage: StageKey }) {
-  const idx = stageIndex(stage);
-  const pct = Math.round(((idx + 1) / STAGES.length) * 100);
+};
+const Btn = ({ children, onClick, tone="default", title }: {children:React.ReactNode; onClick?:()=>void; tone?: "default"|"danger"; title?:string}) => {
+  const cls = tone==="danger"
+    ? "border-rose-300 text-rose-700 hover:bg-rose-50"
+    : "border-slate-300 text-slate-800 hover:bg-slate-50";
   return (
-    <div className="flex items-center gap-2" aria-label={`Progress: ${pct}%`}>
-      <div className="flex items-center gap-1">
-        {STAGES.map((s, i) => (
-          <span
-            key={s.key}
-            className={`h-2.5 w-2.5 rounded-full ${i <= idx ? "bg-emerald-500" : "bg-zinc-300"}`}
-            aria-hidden
-          />
-        ))}
-      </div>
-      <span className="text-sm text-zinc-500 w-10 text-right">{pct}%</span>
-    </div>
+    <button type="button" title={title} onClick={onClick}
+      className={`rounded-md border px-3 py-2 text-sm font-medium transition ${cls}`}>
+      {children}
+    </button>
   );
-}
+};
 
-function WhatsAppButton({ className = "" }: { className?: string }) {
-  return (
-    <a
-      href="https://wa.me/447713454032?text=Hi%20Brixel%2C%20I%27d%20like%20to%20discuss%20my%20job."
-      target="_blank"
-      rel="noreferrer noopener"
-      className={`inline-flex items-center justify-center rounded-md bg-emerald-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${className}`}
-    >
-      <span aria-hidden className="mr-2">💬</span>
-      Chat on WhatsApp
-    </a>
-  );
-}
-
-/** Lightweight modal for View details */
-function Modal({
-  open,
-  onClose,
-  children,
-  title,
-}: {
-  open: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
-  title?: string;
-}) {
-  if (!open) return null;
-  return createPortal(
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative z-[1001] w-[min(680px,92vw)] max-h-[85vh] overflow-auto rounded-xl border border-zinc-200 bg-white p-5 shadow-xl">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-zinc-900">{title ?? "Details"}</h2>
-          <button
-            onClick={onClose}
-            className="rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50"
-          >
-            Close
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>,
-    document.body
-  );
-}
-
-export default function Page() {
-  const [leads, setLeads] = useState<Lead[]>(INITIAL);
+export default function PortalPage() {
+  const [leads, setLeads] = useState<Lead[]>(seed);
+  const [selectedId, setSelected] = useState<string>(leads[0]?.id ?? "");
   const [tab, setTab] = useState<StageKey | "all">("all");
-  const [query, setQuery] = useState("");
-  const [detailsId, setDetailsId] = useState<string | null>(null);
+  const selected = leads.find(l => l.id === selectedId) ?? leads[0];
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return leads.filter((l) => {
-      const inTab = tab === "all" ? true : l.stage === tab;
-      if (!q) return inTab;
-      return (
-        inTab &&
-        (l.service.toLowerCase().includes(q) ||
-          l.ref.toLowerCase().includes(q) ||
-          l.postcode.toLowerCase().includes(q))
-      );
-    });
-  }, [leads, tab, query]);
+    return tab === "all" ? leads : leads.filter(l => l.stage === tab);
+  }, [leads, tab]);
 
-  const active = detailsId ? leads.find((l) => l.id === detailsId) ?? null : null;
-
-  function moveBack(id: string) {
-    setLeads((curr) =>
-      curr.map((l) => {
-        if (l.id !== id) return l;
-        const idx = stageIndex(l.stage);
-        if (l.stage === "archived" || idx <= 0) return l;
-        return { ...l, stage: STAGES[idx - 1].key as StageKey };
-      })
-    );
-  }
-
-  function moveForward(id: string) {
-    setLeads((curr) =>
-      curr.map((l) => {
-        if (l.id !== id) return l;
-        const next = FORWARD[l.stage].next;
-        if (!next) return l;
-        return { ...l, stage: next };
-      })
-    );
-  }
-
-  function archive(id: string) {
-    setLeads((curr) => curr.map((l) => (l.id === id ? { ...l, stage: "archived" } : l)));
-  }
-
-  function remove(id: string) {
-    setLeads((curr) => curr.filter((l) => l.id !== id));
-    if (detailsId === id) setDetailsId(null);
-  }
-
-  const TABS: { key: StageKey | "all"; label: string }[] = [
-    { key: "all", label: "All" },
-    ...STAGES.filter((s) => s.key !== "archived").map((s) => ({ key: s.key, label: s.label })),
-    { key: "archived", label: "Archived" },
-  ];
+  const move = (id: string, dir: -1 | 1) => {
+    setLeads(prev => prev.map(l => {
+      if (l.id !== id) return l;
+      const i = idxOf(l.stage);
+      let j = Math.min(STAGES.length-1, Math.max(0, i + dir));
+      // keep Archived terminal (no forward from archived)
+      if (l.stage === "archived" && dir === 1) j = i;
+      return { ...l, stage: STAGES[j].key };
+    }));
+  };
+  const archive = (id: string) => setLeads(prev => prev.map(l => l.id===id ? ({...l, stage: "archived"}) : l));
+  const del = (id: string) => setLeads(prev => prev.filter(l => l.id !== id));
 
   return (
-    <>
-      {/* Header */}
-      <div className="mx-auto max-w-6xl px-4 pt-6">
-        <div className="flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-semibold text-zinc-900">My Portal</h1>
-          <div className="flex-1" />
-          <button
-            onClick={() => signOut({ callbackUrl: "/" })}
-            className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          >
-            <span aria-hidden>↪</span> Sign out
-          </button>
-        </div>
-
-        {/* Tabs / Search */}
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          {TABS.map((t) => {
-            const is = tab === t.key;
-            return (
-              <button
-                key={String(t.key)}
-                onClick={() => setTab(t.key)}
-                className={`rounded-full border px-3 py-1.5 text-sm ${is
-                  ? "border-zinc-900 bg-zinc-900 text-white"
-                  : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
-                  }`}
-              >
-                {t.label}
-              </button>
-            );
-          })}
-          <div className="ml-auto">
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by service, ref"
-              className="w-[320px] rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm outline-none placeholder:text-zinc-400 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
-            />
-          </div>
-        </div>
+    <div className="mx-auto max-w-6xl px-4 py-8">
+      {/* header row */}
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold tracking-tight">My Portal</h1>
+        <button
+          type="button"
+          onClick={() => signOut({ callbackUrl: "/" })}
+          className="inline-flex items-center gap-2 rounded-full border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+        >
+          <span>🚪</span> <span>Sign out</span>
+        </button>
       </div>
 
-      {/* List */}
-      <div className="mx-auto max-w-6xl px-4 pb-12 pt-4 flex flex-col gap-4">
-        {filtered.map((l) => {
-          const idx = stageIndex(l.stage);
-          const forwardCfg = FORWARD[l.stage];
-          const canBack = l.stage !== "archived" && idx > 0;
-          const canForward = !!forwardCfg.next;
-
+      {/* tabs */}
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        {(["all", ...STAGES.map(s=>s.key)] as (StageKey|"all")[]).map(k => {
+          const s = STAGES.find(x => x.key === k);
+          const label = k==="all" ? "All" : `${s?.label}`;
+          const active = tab===k;
           return (
-            <div key={l.id} className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="text-lg font-semibold text-emerald-800">{l.service}</span>
-                <span className="text-sm text-zinc-400">Ref {l.ref}</span>
-                <StagePill stage={l.stage} />
-                <div className="ml-auto">
-                  <ProgressDots stage={l.stage} />
-                </div>
-              </div>
-
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <WhatsAppButton />
-                <button
-                  onClick={() => setDetailsId(l.id)}
-                  className="rounded-md border border-zinc-200 bg-white px-3.5 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
-                >
-                  View details
-                </button>
-
-                {/* Forward (primary) */}
-                {canForward && (
-                  <button
-                    onClick={() => moveForward(l.id)}
-                    className="inline-flex items-center gap-2 rounded-md bg-zinc-900 px-3.5 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
-                    title="Advance one step"
-                  >
-                    <span aria-hidden>→</span>
-                    {forwardCfg.label}
-                  </button>
-                )}
-
-                {/* Back (subtle) */}
-                {canBack && (
-                  <button
-                    onClick={() => moveBack(l.id)}
-                    className="inline-flex items-center gap-2 rounded-md border border-zinc-300 bg-white px-3.5 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
-                    title="Revert one step"
-                  >
-                    <span aria-hidden>↩</span>
-                    Move back
-                  </button>
-                )}
-
-                <button
-                  onClick={() => archive(l.id)}
-                  className="rounded-md border border-zinc-200 bg-white px-3.5 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
-                >
-                  Archive
-                </button>
-                <button
-                  onClick={() => remove(l.id)}
-                  className="rounded-md border border-rose-200 bg-rose-50 px-3.5 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
+            <button key={String(k)} onClick={()=>setTab(k)}
+              className={`rounded-full border px-3 py-1.5 text-sm ${active ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-slate-300 text-slate-700 hover:bg-slate-50"}`}>
+              {k==="all" ? "All" : `${s?.label}`}
+            </button>
           );
         })}
-
-        {filtered.length === 0 && (
-          <div className="rounded-xl border border-zinc-200 bg-white p-8 text-center text-zinc-500">
-            No results.
-          </div>
-        )}
+        <input
+          placeholder="Search by service, ref or postcode"
+          className="ml-auto w-64 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-400"
+        />
       </div>
 
-      {/* Details Modal */}
-      <Modal open={!!active} onClose={() => setDetailsId(null)} title={active?.service}>
-        {!active ? null : (
-          <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
+        {/* list */}
+        <div className="space-y-4">
+          {filtered.map(lead => {
+            const s = STAGES[idxOf(lead.stage)];
+            const i = idxOf(lead.stage);
+            const canBack = i > 0;
+            const canFwd  = i < STAGES.length-1 && lead.stage !== "archived";
+
+            // stage-specific CTAs (kept from your first version)
+            const stageCtas: Record<StageKey, React.ReactNode> = {
+              matched:        <Btn onClick={()=>move(lead.id,+1 as 1)}>Add photos / details</Btn>,
+              confirming:     <Btn onClick={()=>move(lead.id,+1 as 1)}>Book a survey</Btn>,
+              survey_booked:  <>
+                                <Btn onClick={()=>move(lead.id,+1 as 1)}>Get estimate</Btn>
+                                <Btn onClick={()=>move(lead.id,+1 as 1)}>Confirm scope</Btn>
+                              </>,
+              estimate_ready: <Btn onClick={()=>move(lead.id,+1 as 1)}>Approve estimate</Btn>,
+              work_scheduled: <Btn onClick={()=>setSelected(lead.id)}>View booking</Btn>,
+              archived:       <span className="text-sm text-slate-500">—</span>,
+            };
+
+            return (
+              <div key={lead.id}
+                className={`rounded-xl border p-4 ${selected?.id===lead.id ? "border-emerald-300 ring-1 ring-emerald-200" : "border-slate-200"}`}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="text-lg font-semibold">{lead.service}</div>
+                    <span className="text-sm text-slate-500">Ref {lead.ref}</span>
+                    <Chip tone={lead.stage==="archived" ? "slate" : lead.stage==="estimate_ready" ? "amber" : "green"}>
+                      <span>{s.emoji}</span>
+                      <span>{s.label}</span>
+                    </Chip>
+                  </div>
+
+                  {/* progress dots */}
+                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <div className="flex items-center gap-1">
+                      {STAGES.slice(0, STAGES.length-1).map((st, idx) => (
+                        <span key={st.key} className={`h-2 w-2 rounded-full ${idx <= i-1 ? "bg-emerald-500" : "bg-slate-300"}`}></span>
+                      ))}
+                    </div>
+                    <span>{stagePct(lead.stage)}%</span>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Btn onClick={()=>window.open("https://wa.me/message","_blank")}><span className="mr-1">💬</span>Chat on WhatsApp</Btn>
+                  <Btn onClick={()=>{ setSelected(lead.id); }} >View details</Btn>
+
+                  {/* stage-specific CTAs */}
+                  <div className="mx-1 hidden sm:block h-5 w-px bg-slate-200" />
+                  {stageCtas[lead.stage]}
+
+                  {/* spacer then archive/delete */}
+                  <div className="grow" />
+                  {canBack && <Btn onClick={()=>move(lead.id,-1 as -1)} title="Go back one step"><span className="mr-1">↩️</span>Move back</Btn>}
+                  {canFwd  && <Btn onClick={()=>move(lead.id,+1 as 1)}  title="Advance one step"><span className="mr-1">↪️</span>Move forward</Btn>}
+                  <Btn onClick={()=>archive(lead.id)}>Archive</Btn>
+                  <Btn onClick={()=>del(lead.id)} tone="danger">Delete</Btn>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* right panel */}
+        {selected && (
+          <aside className="sticky top-6 h-fit space-y-4 rounded-xl border border-slate-200 p-4">
             <div className="flex items-center justify-between">
-              <div className="text-sm text-zinc-500">Ref {active.ref} · {active.postcode}</div>
-              <StagePill stage={active.stage} />
+              <div>
+                <div className="text-lg font-semibold">{selected.service}</div>
+                <div className="text-sm text-slate-500">Ref {selected.ref} · {selected.postcode}</div>
+              </div>
+              <Chip tone={selected.stage==="estimate_ready" ? "amber" : selected.stage==="archived" ? "slate" : "green"}>
+                <span>{STAGES[idxOf(selected.stage)].emoji}</span>
+                <span>{STAGES[idxOf(selected.stage)].label}</span>
+              </Chip>
             </div>
 
-            <div className="rounded-lg border border-zinc-100 bg-zinc-50 p-4">
-              <div className="text-sm font-semibold text-zinc-900">What happens next</div>
-              <ul className="mt-2 space-y-2 text-sm text-zinc-700">
-                <li><span className="mr-2" aria-hidden>💬</span> Chat to us on WhatsApp — you’ll be routed to a specialist in minutes.</li>
-                <li><span className="mr-2" aria-hidden>📍</span> You’re matched — vetted local builder assigned.</li>
-                <li><span className="mr-2" aria-hidden>📅</span> Book your site survey — pick a time that suits you.</li>
-                <li><span className="mr-2" aria-hidden>📄</span> Get your estimate — we confirm the scope and share your price.</li>
-                <li><span className="mr-2" aria-hidden>🛠️</span> Schedule the work — agree a start date; covered by our guarantee.</li>
+            <div className="flex gap-2">
+              <Btn onClick={()=>window.open("https://wa.me/message","_blank")}><span className="mr-1">💬</span>Chat on WhatsApp</Btn>
+              <Btn onClick={()=>{ /* keep as dummy */ }}>View details</Btn>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 p-4">
+              <h3 className="mb-3 text-base font-semibold">What happens next</h3>
+              <ul className="space-y-2 text-slate-700">
+                <li>💬 <b>Chat to us on WhatsApp</b> — you’ll be routed to a specialist in minutes.</li>
+                <li>📍 <b>You’re matched</b> — vetted local builder assigned.</li>
+                <li>📅 <b>Book your site survey</b> — pick a time that suits you.</li>
+                <li>📄 <b>Get your estimate</b> — we confirm the scope and share your price.</li>
+                <li>🛠️ <b>Schedule the work</b> — agree a start date; covered by our guarantee.</li>
               </ul>
+              <p className="mt-3 text-xs text-slate-500">Fastest reply during working hours. Typical response: under 10 minutes.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Chip tone="slate">DBS-checked</Chip>
+                <Chip tone="slate">£5m Public Liability</Chip>
+                <Chip tone="slate">12-month guarantee</Chip>
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              {FORWARD[active.stage].next && (
-                <button
-                  onClick={() => { moveForward(active.id); }}
-                  className="inline-flex items-center gap-2 rounded-md bg-zinc-900 px-3.5 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
-                >
-                  <span aria-hidden>→</span>
-                  {FORWARD[active.stage].label}
-                </button>
-              )}
-              {stageIndex(active.stage) > 0 && active.stage !== "archived" && (
-                <button
-                  onClick={() => { moveBack(active.id); }}
-                  className="inline-flex items-center gap-2 rounded-md border border-zinc-300 bg-white px-3.5 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
-                >
-                  <span aria-hidden>↩</span>
-                  Move back
-                </button>
-              )}
-              <WhatsAppButton />
+            <div className="rounded-xl border border-slate-200 p-4">
+              <h3 className="mb-3 text-base font-semibold">Why homeowners choose us</h3>
+              <ul className="space-y-2 text-slate-700">
+                <li>🤖 Instant AI-powered quotes</li>
+                <li>🛠️ Vetted local builders you can trust</li>
+                <li>🛡️ £5m insurance • 12-month guarantee • DBS-checked teams</li>
+              </ul>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Chip tone="slate">DBS-checked</Chip>
+                <Chip tone="slate">£5m Public Liability</Chip>
+                <Chip tone="slate">12-month guarantee</Chip>
+              </div>
             </div>
-          </div>
+          </aside>
         )}
-      </Modal>
-    </>
+      </div>
+    </div>
   );
 }
