@@ -1,4 +1,36 @@
 "use client";
+type BtnProps = { children: React.ReactNode; onClick?: () => void; title?: string };
+
+/** Secondary neutral button */
+function SecondaryBtn(props: BtnProps) {
+  const { children, onClick, title } = props;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className="inline-flex items-center gap-1 rounded border px-3 py-1.5 text-sm hover:bg-gray-50"
+    >
+      {children}
+    </button>
+  );
+}
+
+/** Primary green CTA (for WhatsApp) */
+function PrimaryBtn(props: BtnProps) {
+  const { children, onClick, title } = props;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+    >
+      {children}
+    </button>
+  );
+}
+
 
 import { useEffect, useMemo, useState } from "react";
 import { signOut } from "next-auth/react";
@@ -70,7 +102,7 @@ const Btn = ({ children, onClick, tone="default", title }: {children:React.React
   );
 };
 /** Primary green CTA (for WhatsApp) */
-const PrimaryBtn = ({ children, onClick, title }: {children:React.ReactNode; onClick?:()=>void; title?:string}) => (
+const _PrimaryBtnOld = ({ children, onClick, title }: {children:React.ReactNode; onClick?:()=>void; title?:string}) => (
   <button
     type="button"
     title={title}
