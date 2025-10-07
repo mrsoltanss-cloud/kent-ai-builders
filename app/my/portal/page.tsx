@@ -62,6 +62,7 @@ const Btn = ({ children, onClick, tone="default", title }: {children:React.React
     ? "border-rose-300 text-rose-700 hover:bg-rose-50"
     : "border-slate-300 text-slate-800 hover:bg-slate-50";
   return (
+    <div className="whatsapp-cta-wrap flex flex-col items-start gap-1">
     <button type="button" title={title} onClick={onClick}
       className={`rounded-md border px-3 py-2 text-sm font-medium transition ${cls}`}>
       {children}
@@ -210,7 +211,9 @@ export default function PortalPage() {
           >
             <span>🚪</span> <span>Sign out</span>
           </button>
-<div data-whatsapp-caption className="text-xs text-slate-600 leading-snug">Start here — chat to us on WhatsApp to progress your booking. <a className="underline" href="mailto:support@brixel.uk?subject=Brixel%20booking%20support&body=Hi%20Brixel%2C%0A%0AI%E2%80%99d%20like%20to%20progress%20my%20booking.%0A%0AReference%3A%20(add%20BK-xxxxx%20if%20known)%0AService%3A%20(e.g.%20Plastering)%0A%0AName%3A%0APhone%3A%0APostcode%3A%0ANotes%3A%0A%0AThanks!">Email us instead</a>.</div>
+    <div data-whatsapp-caption className="mt-1 inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-1 text-[13px] font-semibold text-emerald-800"> <span>👉</span> <span>Start here — chat to us on WhatsApp to progress your booking.</span> <span className="text-slate-500"> · </span> <a className="underline underline-offset-2" href="mailto:support@brixel.uk?subject=Brixel%20booking%20support&body=Hi%20Brixel%2C%0A%0AI%E2%80%99d%20like%20to%20progress%20my%20booking.%0A%0AReference%3A%20(add%20BK-xxxxx%20if%20known)%0AService%3A%20(e.g.%20Plastering)%0A%0AName%3A%0APhone%3A%0APostcode%3A%0ANotes%3A%0A%0AThanks!">Email us instead</a>. </div>
+  </div>
+
         </div>
 
         {/* tabs */}
