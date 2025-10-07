@@ -1,0 +1,55 @@
+export default function TrustSection() {
+  return (
+    <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 my-16">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
+        {/* Left: trust copy (theme-safe colors) */}
+        <div className="max-w-3xl">
+          <ul className="list-none pl-0 space-y-4">
+            <li className="text-base leading-7">
+              <span className="font-semibold text-neutral-900 dark:text-white">
+                Local builders you can actually trust
+              </span>
+              <span className="text-neutral-600 dark:text-neutral-300">
+                {" "}— vetted, reviewed, and verified.
+              </span>
+            </li>
+            <li className="text-base leading-7">
+              <span className="font-semibold text-neutral-900 dark:text-white">
+                Guaranteed peace of mind
+              </span>
+              <span className="text-neutral-600 dark:text-neutral-300">
+                {" "}— insurance, warranties, and DBS-checked teams.
+              </span>
+            </li>
+            <li className="text-base leading-7">
+              <span className="font-semibold text-neutral-900 dark:text-white">
+                Fast response, no hassle
+              </span>
+              <span className="text-neutral-600 dark:text-neutral-300">
+                {" "}— we call back within 1 hour; free survey included.
+              </span>
+            </li>
+          </ul>
+
+          {/* small badges (keeps your original trust chips) */}
+          <div className="mt-6 flex flex-wrap gap-3">
+            <span className="px-3 py-1 rounded-full border text-xs text-neutral-700 dark:text-neutral-200 border-neutral-200 dark:border-white/15">DBS-checked teams</span>
+            <span className="px-3 py-1 rounded-full border text-xs text-neutral-700 dark:text-neutral-200 border-neutral-200 dark:border-white/15">£5m Public Liability</span>
+            <span className="px-3 py-1 rounded-full border text-xs text-neutral-700 dark:text-neutral-200 border-neutral-200 dark:border-white/15">NICEIC / Gas Safe</span>
+            <span className="px-3 py-1 rounded-full border text-xs text-neutral-700 dark:text-neutral-200 border-neutral-200 dark:border-white/15">12-month guarantee</span>
+          </div>
+        </div>
+
+        {/* Right: replace big tiles with a slim text panel (no emoji, no squares) */}
+        <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-neutral-50/70 dark:bg-white/5 p-8">
+          <div className="grid grid-cols-2 gap-6">
+            <div className="text-center text-sm font-medium text-neutral-800 dark:text-white">Handshake</div>
+            <div className="text-center text-sm font-medium text-neutral-800 dark:text-white">Team on site</div>
+            <div className="text-center text-sm font-medium text-neutral-800 dark:text-white">Guaranteed</div>
+            <div className="text-center text-sm font-medium text-neutral-800 dark:text-white">Verified</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
