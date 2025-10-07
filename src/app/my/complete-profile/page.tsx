@@ -48,7 +48,7 @@ export default function CompleteProfilePage() {
       if (!res.ok || !json.ok) throw new Error(json?.error || 'Update failed');
 
       setMsg('Profile saved. You’re all set!');
-      setTimeout(() => router.push('/my'), 800);
+      setTimeout(() => router.push('/my/portal'), 800);
     } catch (e: any) {
       setErr(e.message || 'Something went wrong.');
     } finally {

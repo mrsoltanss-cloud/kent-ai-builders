@@ -19,7 +19,7 @@ export default function PostSignIn() {
         const j = await res.json();
         const role = String(j?.user?.role || '').toUpperCase();
         if (role === 'ADMIN') router.replace('/home');
-        else router.replace('/my');
+        else router.replace('/my/portal');
       } catch {
         router.replace('/auth/signin');
       }
