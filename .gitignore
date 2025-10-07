@@ -42,3 +42,7 @@ next-env.d.ts
 public/sitemap*.xml
 public/robots.txt
 .env
+
+# portal backups
+app/my/portal/page.tsx.bak.*
+src/app/my/portal/page.tsx.bak.*
