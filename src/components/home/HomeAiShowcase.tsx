@@ -1,0 +1,43 @@
+import LiveCounter from "@/components/LiveCounter";
+import SocialProofTicker from "./SocialProofTicker";
+import AiShowcase from "./AiShowcase";
+
+export default function HomeAiShowcase(){
+  return (
+    <section className="mx-auto max-w-6xl px-4 py-10">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
+            AI-powered estimates, trusted local pros.
+          </h2>
+          <p className="mt-1 text-gray-600">
+            Instant, fair pricing matched to verified builders — no pushy sales calls, ever.
+          </p>
+        </div>
+        <LiveCounter />
+      </div>
+
+      <div className="mt-6 grid gap-6 md:grid-cols-3">
+        <div className="md:col-span-2">
+          <AiShowcase />
+        </div>
+        <div className="md:col-span-1">
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 shadow-sm">
+            <h3 className="font-bold text-gray-900">Why homeowners choose us</h3>
+            <ul className="mt-3 space-y-2 text-sm text-gray-700">
+              <li>✔️ 2,300+ successful projects</li>
+              <li>✔️ 4.9/5 rating</li>
+              <li>✔️ £5m Public Liability cover</li>
+              <li>✔️ 12-month workmanship guarantee</li>
+              <li>✔️ Verified & DBS-checked teams</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6">
+        <SocialProofTicker />
+      </div>
+    </section>
+  );
+}

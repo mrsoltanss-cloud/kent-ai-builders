@@ -9,7 +9,7 @@ export default function MyAreaButton({ className = "" }: { className?: string })
 
   return (
     <Link
-      href="/me"
+      href="/my/portal"
       className={`rounded-full bg-emerald-600 text-white px-4 py-1.5 hover:bg-emerald-700 ${className}`}
       aria-label="Go to my area"
       title="Go to my area"

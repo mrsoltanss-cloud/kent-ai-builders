@@ -1,0 +1,55 @@
+import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOptions";
+
+type Payload = {
+  service?: string;
+  postcode?: string;
+  urgency?: string | null;
+  details?: Record<string, unknown> | null;
+  description?: string | null;
+  photos?: unknown; // array of data URLs/URLs as JSON
+};
+
+export async function POST(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = (await req.json()) as Payload;
+
+    const service = body.service?.toLowerCase().trim();
+    const postcode = body.postcode?.toUpperCase().trim();
+    const urgency = body.urgency ?? null;
+    const description = body.description ?? null;
+    const photos = Array.isArray(body.photos) ? body.photos : null;
+
+    if (!service || !postcode) {
+      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+    }
+
+    // Merge postcode into details JSON so we don't depend on a DB column that may not exist
+    const incomingDetails = body.details ?? {};
+    const details = { ...incomingDetails, postcode };
+
+    const lead = await prisma.lead.create({
+      data: {
+        service,
+        // NOTE: postcode is saved inside JSON details to avoid schema mismatch
+        urgency: urgency as any,
+        userId: (session.user as any).id,
+        description,
+        photos: photos as any,
+        details: details as any
+      } as any
+    });
+
+    return NextResponse.json({ id: lead.id }, { status: 200 });
+  } catch (e: any) {
+    console.error("Lead create error:", e);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
+}
