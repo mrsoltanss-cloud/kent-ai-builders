@@ -9,7 +9,7 @@ export default function SiteHeader() {
       <Link href="/" className="font-semibold">Brixel</Link>
 
       <nav className="hidden md:flex items-center gap-8 text-[15px]">
-        <Link href="/my/portal" className="hover:opacity-80">Homeowner</Link>
+        <Link href="/#homeowner" className="hover:opacity-80">Homeowner</Link>
         <Link href="/#trades" className="hover:opacity-80">Trades</Link>
       </nav>
 
