@@ -1,5 +1,4 @@
 "use client";
-import PortalSignOutOverlay from '../../../components/PortalSignOutOverlay';
 
 import React from "react";
 
@@ -161,8 +160,6 @@ function waLink(req: Request) {
 function ProgressDots({ stage }: { stage: StageKey }) {
   const idx = STAGE_INDEX[stage];
   return (
-    <PortalSignOutOverlay />
-
     <div className="flex items-center gap-1" aria-label={`Progress: ${((idx+1)/STAGES.length*100)|0}%`}>
       {STAGES.map((s, i) => (
         <span
