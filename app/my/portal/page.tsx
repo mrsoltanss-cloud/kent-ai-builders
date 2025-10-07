@@ -210,6 +210,7 @@ export default function PortalPage() {
           >
             <span>🚪</span> <span>Sign out</span>
           </button>
+<div data-whatsapp-caption className="text-xs text-slate-600 leading-snug">Start here — chat to us on WhatsApp to progress your booking. <a className="underline" href="mailto:support@brixel.uk?subject=Brixel%20booking%20support&body=Hi%20Brixel%2C%0A%0AI%E2%80%99d%20like%20to%20progress%20my%20booking.%0A%0AReference%3A%20(add%20BK-xxxxx%20if%20known)%0AService%3A%20(e.g.%20Plastering)%0A%0AName%3A%0APhone%3A%0APostcode%3A%0ANotes%3A%0A%0AThanks!">Email us instead</a>.</div>
         </div>
 
         {/* tabs */}
