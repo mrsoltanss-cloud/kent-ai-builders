@@ -1,7 +1,4 @@
 "use client";
-import * as React from "react";
-type BtnProps = { children: React.ReactNode; onClick?: () => void; title?: string };
-
 type BtnProps = { children: React.ReactNode; onClick?: () => void; title?: string };
 
 /** Secondary neutral button */
@@ -17,6 +14,7 @@ function SecondaryBtn(props: BtnProps) {
       {children}
     </button>
   );
+}
 
 /** Primary green CTA (for WhatsApp) */
 function PrimaryBtn(props: BtnProps) {
@@ -31,7 +29,79 @@ function PrimaryBtn(props: BtnProps) {
       {children}
     </button>
   );
+}
 
+
+import { useEffect, useMemo, useState } from "react";
+import { signOut } from "next-auth/react";
+
+/** ----- Stages & helpers ----- */
+type StageKey = "matched" | "confirming" | "survey_booked" | "estimate_ready" | "work_scheduled" | "archived";
+const STAGES: { key: StageKey; label: string; emoji: string }[] = [
+  { key: "matched",         label: "Matched",          emoji: "✅" },
+  { key: "confirming",      label: "Confirming scope", emoji: "📝" },
+  { key: "survey_booked",   label: "Survey booked",    emoji: "📅" },
+  { key: "estimate_ready",  label: "Estimate ready",   emoji: "📄" },
+  { key: "work_scheduled",  label: "Work scheduled",   emoji: "🛠️" },
+  { key: "archived",        label: "Archived",         emoji: "📦" },
+];
+const idxOf = (k: StageKey) => STAGES.findIndex(s => s.key === k);
+const stagePct = (k: StageKey) =>
+  Math.round(((idxOf(k)+1) / (STAGES.length-1)) * 100); // archived not counted in dots
+
+/** ----- Demo data (client only) ----- */
+type Lead = {
+  id: string;
+  ref: string;
+  service: string;
+  postcode: string;
+  stage: StageKey;
+  // optional fields for the details modal
+  rooms?: string;
+  budget?: string;
+  size?: number;
+  timeline?: string;
+  age?: string;
+  notes?: string;
+  photos?: string[];
+}
+const seed: Lead[] = [
+  { id: "1", ref: "BK-X5NENKON", service: "Plastering",            postcode: "CT1",  stage: "archived",
+    rooms:"Living room + hallway", budget:"£1,500–£2,000", size:28, timeline:"Within 2 weeks", age:"1930s",
+    notes:"Some existing cracks. Happy to supply paint.", photos:["/demo/photo1.jpg","/demo/photo2.jpg"] },
+  { id: "2", ref: "BK-YTORRETQ", service: "Kitchen Renovation",     postcode: "CT2",  stage: "estimate_ready" },
+  { id: "3", ref: "BK-P9K7AA12", service: "Loft Conversion",        postcode: "ME7",  stage: "survey_booked" },
+  { id: "4", ref: "BK-ZZ31MMQ2", service: "Bathroom Refurbishment", postcode: "TN24", stage: "estimate_ready" },
+  { id: "5", ref: "BK-AB77CDE3", service: "Electrical",             postcode: "DA1",  stage: "work_scheduled" },
+];
+
+/** Small UI atoms */
+const Chip = ({ children, tone = "default" }: { children: React.ReactNode; tone?: "default"|"green"|"amber"|"slate" }) => {
+  const tones: Record<string,string> = {
+    default: "border-slate-300 text-slate-700 bg-white",
+    green:   "border-emerald-300 text-emerald-800 bg-emerald-50",
+    amber:   "border-amber-300 text-amber-800 bg-amber-50",
+    slate:   "border-slate-300 text-slate-700 bg-slate-50",
+  };
+  return (
+    <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm ${tones[tone]}`}>
+      {children}
+    </span>
+  );
+};
+const Btn = ({ children, onClick, tone="default", title }: {children:React.ReactNode; onClick?:()=>void; tone?: "default"|"danger"; title?:string}) => {
+  const cls = tone==="danger"
+    ? "border-rose-300 text-rose-700 hover:bg-rose-50"
+    : "border-slate-300 text-slate-800 hover:bg-slate-50";
+  return (
+    <div className="whatsapp-cta-wrap flex flex-col items-start gap-1">
+    <button type="button" title={title} onClick={onClick}
+      className={`rounded-md border px-3 py-2 text-sm font-medium transition ${cls}`}>
+      {children}
+    </button>
+  );
+};
+/** Primary green CTA (for WhatsApp) */
 /** ----- Modal for details ----- */
 function DetailsModal({open, onClose, lead}:{open:boolean; onClose:()=>void; lead: Lead|null}) {
   useEffect(() => {
@@ -119,6 +189,7 @@ function DetailsModal({open, onClose, lead}:{open:boolean; onClose:()=>void; lea
       </div>
     </div>
   );
+}
 
 /** ----- Page ----- */
 export default function PortalPage() {
@@ -141,7 +212,7 @@ export default function PortalPage() {
       if (l.stage === "archived" && dir === 1) j = i; // no forward from archived
       return { ...l, stage: STAGES[j].key };
     }));
-
+  };
   const archive = (id: string) => setLeads(prev => prev.map(l => l.id===id ? ({...l, stage: "archived"}) : l));
   const del = (id: string) => setLeads(prev => prev.filter(l => l.id !== id));
 
@@ -312,4 +383,4 @@ export default function PortalPage() {
       </div>
     </>
   );
-
+}
