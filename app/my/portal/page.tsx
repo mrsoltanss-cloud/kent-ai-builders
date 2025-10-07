@@ -102,17 +102,6 @@ const Btn = ({ children, onClick, tone="default", title }: {children:React.React
   );
 };
 /** Primary green CTA (for WhatsApp) */
-const _PrimaryBtnOld = ({ children, onClick, title }: {children:React.ReactNode; onClick?:()=>void; title?:string}) => (
-  <button
-    type="button"
-    title={title}
-    onClick={onClick}
-    className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-  >
-    {children}
-  </button>
-);
-
 /** ----- Modal for details ----- */
 function DetailsModal({open, onClose, lead}:{open:boolean; onClose:()=>void; lead: Lead|null}) {
   useEffect(() => {
