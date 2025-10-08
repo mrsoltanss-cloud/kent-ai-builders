@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                               String       @id @default(cuid())
+  email                            String       @unique
+  name                             String?
+  role                             Role         @default(HOMEOWNER)
+  isBlocked                        Boolean      @default(false)
+  blockedAt                        DateTime?
+  blockedReason                    String?
+  createdAt                        DateTime     @default(now())
+  updatedAt                        DateTime     @updatedAt
+  passwordHash                     String?
+  password                         String?
+  AuditLog_AuditLog_actorIdToUser  AuditLog[]   @relation("AuditLog_actorIdToUser")
+  AuditLog_AuditLog_targetIdToUser AuditLog[]   @relation("AuditLog_targetIdToUser")
+  leads                            Lead[]
+  UserProfile                      UserProfile?
+}
+
+model Lead {
+  id          String     @id @default(cuid())
+  userId      String
+  service     String
+  scope       String?
+  rooms       Int?
+  sqm         Int?
+  propertyAge Int?
+  urgency     Urgency
+  budget      Int?
+  timeline    String?
+  notes       String?
+  status      LeadStatus @default(PENDING)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  description String?
+  details     Json?
+  photos      Json?
+  user        User       @relation(fields: [userId], references: [id])
+}
+
+model AuditLog {
+  id                           String   @id
+  actorId                      String?
+  action                       String
+  targetId                     String?
+  meta                         Json?
+  createdAt                    DateTime @default(now())
+  leadId                       String?
+  User_AuditLog_actorIdToUser  User?    @relation("AuditLog_actorIdToUser", fields: [actorId], references: [id])
+  User_AuditLog_targetIdToUser User?    @relation("AuditLog_targetIdToUser", fields: [targetId], references: [id])
+
+  @@index([action])
+  @@index([actorId])
+  @@index([createdAt])
+  @@index([targetId])
+}
+
+model UserProfile {
+  id           String   @id
+  userId       String   @unique
+  postcode     String?
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  phone        String?
+  timeframe    String?
+  propertyType String?
+  ownership    String?
+  accessNotes  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime
+  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum LeadStatus {
+  PENDING
+  CONTACTED
+  WON
+  LOST
+}
+
+enum Urgency {
+  FLEXIBLE
+  SOON
+  URGENT
+}
+
+enum Role {
+  USER
+  ADMIN
+  BUILDER
+  HOMEOWNER
+}
