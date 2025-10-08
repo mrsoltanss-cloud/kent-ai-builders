@@ -1,64 +1,25 @@
-// src/app/api/admin/users/route.ts
-import { NextRequest } from "next/server"
-import type { Prisma } from "@prisma/client"
-import { prisma } from "@/lib/prisma"
-import { requireAdmin } from "@/lib/authz"
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { prisma } from "../../../../lib/prisma";
 
-export const runtime = "nodejs"
-export const dynamic = "force-dynamic"
+function isAllowed(role?: string | null) {
+  if (!role) return false;
+  const R = String(role).toUpperCase();
+  return R === "ADMIN" || R === "OPS";
+}
 
-export async function GET(req: NextRequest) {
-  const g = await requireAdmin()
-  if (!g.ok) return new Response("Forbidden", { status: g.status })
+export async function GET() {
+  const session = await getServerSession();
+  const email = (session as any)?.user?.email as string | undefined;
+  if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { searchParams } = new URL(req.url)
-  const q = searchParams.get("q") ?? ""
-  const take = Math.min(parseInt(searchParams.get("take") ?? "25", 10), 100)
-  const page = Math.max(parseInt(searchParams.get("page") ?? "1", 10), 1)
-  const csv = searchParams.get("format") === "csv"
-  const skip = (page - 1) * take
+  const me = await prisma.user.findUnique({ where: { email }, select: { role: true } });
+  if (!isAllowed(me?.role ?? null)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const where: Prisma.UserWhereInput = q
-    ? {
-        OR: [
-          { email: { contains: q, mode: "insensitive" } },
-          { name:  { contains: q, mode: "insensitive" } },
-        ],
-      }
-    : {}
+  const users = await prisma.user.findMany({
+    orderBy: { createdAt: "desc" },
+    select: { id: true, email: true, name: true, role: true, createdAt: true, updatedAt: true, _count: { select: { leads: true } } },
+  });
 
-  const [items, total] = await Promise.all([
-    prisma.user.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      skip,
-      take,
-      select: {
-        id: true, email: true, name: true, role: true,
-        isBlocked: true, blockedAt: true, blockedReason: true,
-        createdAt: true, updatedAt: true,
-        _count: { select: { leads: true } },
-      },
-    }),
-    prisma.user.count({ where }),
-  ])
-
-  if (csv) {
-    const rows = [
-      ["id","email","name","role","isBlocked","createdAt","updatedAt","leads"],
-      ...items.map(u => [
-        u.id, u.email, u.name ?? "", u.role, String(u.isBlocked),
-        u.createdAt.toISOString(), u.updatedAt.toISOString(), String(u._count.leads),
-      ]),
-    ]
-    const body = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n")
-    return new Response(body, {
-      headers: {
-        "content-type": "text/csv",
-        "content-disposition": "attachment; filename=users.csv",
-      },
-    })
-  }
-
-  return Response.json({ ok: true, items, total, page, take })
+  return NextResponse.json({ ok: true, users: users.map(u => ({ ...u, leadsCount: u._count.leads })) });
 }

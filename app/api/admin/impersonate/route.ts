@@ -1,40 +1,39 @@
-// src/app/api/admin/impersonate/route.ts
-import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
-import { requireAdmin } from "@/lib/authz"
-import { audit } from "@/lib/audit"
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { cookies } from "next/headers";
+import { prisma } from "../../../../lib/prisma";
 
-export const runtime = "nodejs"
-export const dynamic = "force-dynamic"
+const ALLOW = (r?: string|null) =>
+  !!r && (String(r).toUpperCase()==="ADMIN" || String(r).toUpperCase()==="OPS");
 
-// POST /api/admin/impersonate { userId: string }   -> sets cookie
-export async function POST(req: NextRequest) {
-  const g = await requireAdmin()
-  if (!g.ok) return new Response("Forbidden", { status: g.status })
-  const { userId } = await req.json().catch(() => ({})) as { userId?: string }
-  if (!userId) return new Response("Bad Request", { status: 400 })
+export async function POST(req: Request) {
+  const session = await getServerSession();
+  const email = (session as any)?.user?.email as string | undefined;
+  if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // don't allow impersonating another admin unless it's yourself
-  const target = await prisma.user.findUnique({ where: { id: userId } })
-  if (!target) return new Response("Not Found", { status: 404 })
-  if (target.role === "ADMIN" && target.id !== g.user.id) {
-    return new Response("Refuse: cannot impersonate another admin", { status: 403 })
-  }
+  const me = await prisma.user.findUnique({ where: { email }, select: { id: true, role: true } });
+  if (!ALLOW(me?.role ?? null)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const res = NextResponse.json({ ok: true })
-  res.cookies.set("impersonateUserId", userId, {
-    httpOnly: true, sameSite: "lax", secure: true, path: "/", maxAge: 60 * 60
-  })
-  await audit({ actorId: g.user.id, action: "impersonate.start", targetUserId: userId })
-  return res
+  const body = await req.json().catch(()=> ({}));
+  const userId = String(body?.userId ?? "");
+  if (!userId) return NextResponse.json({ error: "Missing userId" }, { status: 400 });
+
+  const target = await prisma.user.findUnique({ where: { id: userId }, select: { id: true }});
+  if (!target) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+  // ✅ Await cookies()
+  const jar = await cookies();
+  jar.set("kab_impersonate_id", target.id, { httpOnly: true, sameSite: "lax", path: "/" });
+  jar.set("kab_impersonator_id", me!.id, { httpOnly: true, sameSite: "lax", path: "/" });
+
+  return NextResponse.json({ ok: true });
 }
 
-// DELETE /api/admin/impersonate -> clears cookie
 export async function DELETE() {
-  const g = await requireAdmin()
-  if (!g.ok) return new Response("Forbidden", { status: g.status })
-  const res = NextResponse.json({ ok: true })
-  res.cookies.set("impersonateUserId", "", { httpOnly: true, sameSite: "lax", secure: true, path: "/", maxAge: 0 })
-  await audit({ actorId: g.user.id, action: "impersonate.stop" })
-  return res
+  const session = await getServerSession();
+  if (!(session as any)?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const jar = await cookies(); // ✅ await
+  jar.delete("kab_impersonate_id");
+  jar.delete("kab_impersonator_id");
+  return NextResponse.json({ ok: true });
 }
