@@ -1,21 +1,19 @@
-import * as prismaMod from "@/lib/prisma";
+// app/api/trade/intros/route.ts
 import { NextResponse } from "next/server";
-
-// Be tolerant to either export style
-const db: any = (prismaMod as any).db ?? (prismaMod as any).default ?? (prismaMod as any);
+import { db } from "@/lib/prisma";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const fp = url.searchParams.get("fp");
-  const sinceHours = Number(url.searchParams.get("sinceHours") ?? 72);
-  if (!fp) return NextResponse.json({ jobIds: [] });
-  const since = new Date(Date.now() - sinceHours * 3600 * 1000);
+  const fp = url.searchParams.get("fp") || "";
+  if (!fp) return NextResponse.json({ items: [] });
 
   const rows = await db.jobIntro.findMany({
-    where: { fingerprint: fp, createdAt: { gte: since } },
+    where: {
+      fingerprint: fp,
+      createdAt: { gte: new Date(Date.now() - 1000 * 60 * 60 * 24 * 90) }, // last 90 days
+    },
     select: { jobId: true },
   });
 
-  // de-dup
-  return NextResponse.json({ jobIds: [...new Set(rows.map((r: any) => r.jobId))] });
+  return NextResponse.json({ items: rows.map((r) => r.jobId) });
 }

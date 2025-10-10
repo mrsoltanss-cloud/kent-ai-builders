@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/* ---------- Enums ---------- */
+enum LeadStatus { NEW CONTACTED QUALIFIED CLOSED }
+enum Urgency    { ASAP THIS_MONTH FLEXIBLE }
+enum JobStatus  { OPEN PAUSED CLOSED }
+enum JobTier    { STANDARD QUICKWIN PRIORITY }
+
+/* ---------- NextAuth models (standard) ---------- */
+model User {
+  id            String   @id @default(cuid())
+  name          String?
+  email         String?  @unique
+  emailVerified DateTime?
+  image         String?
+
+  leads         Lead[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?
+  access_token       String?
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+/* ---------- Lead ---------- */
+model Lead {
+  id             String     @id @default(cuid())
+  userId         String?
+  user           User?      @relation(fields: [userId], references: [id])
+
+  service        String
+  scope          String?
+  rooms          Int?
+  sqm            Int?
+  propertyAge    Int?
+  urgency        Urgency
+  budgetMin      Int?
+  budgetMax      Int?
+  timeline       String?
+  postcode       String
+
+  contactName    String?
+  contactEmail   String?
+  contactPhone   String?
+  consent        Boolean    @default(false)
+
+  aiEstimateLow  Int?
+  aiEstimateHigh Int?
+  aiNotes        String?
+
+  status         LeadStatus @default(NEW)
+
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@index([userId, status])
+}
+
+/* ---------- Marketplace models for /trade/jobs ---------- */
+model Job {
+  id              String    @id @default(cuid())
+  title           String
+  summary         String?
+  postcode        String
+  priceMin        Int?
+  priceMax        Int?
+  tier            JobTier   @default(STANDARD)
+  status          JobStatus @default(OPEN)
+  views           Int       @default(0)
+  contactUnlocks  Int       @default(0)
+  allocCap        Int       @default(3)
+  aiSeeded        Boolean   @default(false)
+  filledAt        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  trades          JobTradeTag[]
+  intros          JobIntro[]
+
+  @@index([status])
+  @@index([postcode])
+}
+
+model TradeTag {
+  id    String   @id @default(cuid())
+  key   String   @unique
+  label String
+
+  jobs  JobTradeTag[]
+}
+
+model JobTradeTag {
+  jobId   String
+  tradeId String
+  job     Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  trade   TradeTag @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+
+  @@id([jobId, tradeId])
+}
+
+model JobIntro {
+  id           String   @id @default(cuid())
+  jobId        String
+  builderId    String?
+  fingerprint  String
+  ip           String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+
+  job          Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, fingerprint])
+}
