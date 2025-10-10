@@ -1,0 +1,9 @@
+┌────┬────────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                   │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼────────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 15 │ backfill-local-copy    │ default     │ N/A     │ fork    │ 43513    │ 0s     │ 846  │ online    │ 0%       │ 77.6mb   │ mohamed… │ disabled │
+│ 14 │ backfill-titles        │ default     │ N/A     │ fork    │ 43506    │ 0s     │ 2114 │ online    │ 0%       │ 69.5mb   │ mohamed… │ disabled │
+│ 0  │ crypto-api             │ default     │ 1.0.0   │ fork    │ 45617    │ 9D     │ 103  │ online    │ 0%       │ 27.9mb   │ mohamed… │ disabled │
+│ 17 │ maintain-jobs          │ default     │ N/A     │ fork    │ 43539    │ 0s     │ 86   │ online    │ 0%       │ 73.0mb   │ mohamed… │ disabled │
+│ 1  │ trend-bot              │ default     │ 1.0.0   │ fork    │ 45620    │ 9D     │ 48   │ online    │ 0%       │ 15.3mb   │ mohamed… │ disabled │
+└────┴────────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘

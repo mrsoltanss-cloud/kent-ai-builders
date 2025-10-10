@@ -97,6 +97,12 @@ enum JobTier {
 }
 
 model Job {
+  /// ---- AI title cache (hybrid) ----
+  aiTitle      String?
+  aiTitleAt    DateTime?
+  aiTitleModel String?
+  aiTitleHash  String?
+
   id             String    @id @default(cuid())
   title          String
   summary        String?

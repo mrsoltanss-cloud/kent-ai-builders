@@ -62,3 +62,4 @@ src/app/my/portal/page.tsx.bak.*
 # portal backups
 app/my/portal/page.tsx.bak.*
 src/app/my/portal/page.tsx.bak.*
+.env.local
