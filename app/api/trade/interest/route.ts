@@ -1,54 +1,67 @@
-import * as prismaMod from "@/lib/prisma";
+// app/api/trade/interest/route.ts
 import { NextResponse } from "next/server";
-
-// Be tolerant to either export style
-const db: any = (prismaMod as any).db ?? (prismaMod as any).default ?? (prismaMod as any);
+import { db } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
-    const jobId: string | undefined = body?.jobId;
-    const fingerprint: string | undefined = body?.fingerprint;
-    const builderId: string | null = body?.builderId ?? null;
+    const { jobId, fingerprint } = body as { jobId?: string; fingerprint?: string };
 
     if (!jobId || !fingerprint) {
-      return NextResponse.json({ error: "Missing jobId or fingerprint" }, { status: 400 });
+      return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
     }
 
-    const now = new Date();
+    // Check job status + capacity
+    const j = await db.job.findUnique({
+      where: { id: jobId },
+      select: { allocCap: true, contactUnlocks: true, status: true },
+    });
+    if (!j || j.status !== "OPEN") {
+      return NextResponse.json({ error: "Job not open" }, { status: 404 });
+    }
 
-    const result = await db.$transaction(async (tx: any) => {
-      const job = await tx.job.findUnique({
-        where: { id: jobId },
-        select: { id: true, contactUnlocks: true, allocCap: true },
-      });
-      if (!job) return { status: 404, introduced: 0, cap: 0 };
+    const cap = j.allocCap ?? 3;
+    if ((j.contactUnlocks ?? 0) >= cap) {
+      return NextResponse.json({ error: "Full" }, { status: 409 });
+    }
 
-      // Try to create a unique intro (unique on jobId+fingerprint)
+    // Capture best-effort metadata
+    const ip =
+      (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() ||
+      req.headers.get("x-real-ip") ||
+      undefined;
+    const userAgent = req.headers.get("user-agent") || undefined;
+
+    // Transaction: create intro (unique) + increment counter
+    const result = await db.$transaction(async (tx) => {
       try {
         await tx.jobIntro.create({
-          data: { jobId, builderId, fingerprint, createdAt: now },
+          data: { jobId, fingerprint, ip, userAgent },
         });
-      } catch (_e: any) {
-        // Unique constraint -> already joined
-        return { status: 409, introduced: job.contactUnlocks ?? 0, cap: job.allocCap ?? 3 };
+      } catch (e: any) {
+        // Unique violation: already joined this job from this device
+        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+          return { already: true as const, contactUnlocks: j.contactUnlocks ?? 0 };
+        }
+        throw e;
       }
 
       const updated = await tx.job.update({
         where: { id: jobId },
-        data: { contactUnlocks: (job.contactUnlocks ?? 0) + 1, updatedAt: now },
-        select: { contactUnlocks: true, allocCap: true },
+        data: { contactUnlocks: { increment: 1 } },
+        select: { contactUnlocks: true },
       });
 
-      return { status: 200, introduced: updated.contactUnlocks ?? 0, cap: updated.allocCap ?? 3 };
+      return { already: false as const, contactUnlocks: updated.contactUnlocks };
     });
 
-    return NextResponse.json(
-      { ok: result.status === 200, introduced: result.introduced, cap: result.cap },
-      { status: result.status }
-    );
-  } catch (err) {
-    console.error("interest api error:", err);
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    if (result.already) {
+      return NextResponse.json({ ok: false, already: true, contactUnlocks: result.contactUnlocks }, { status: 409 });
+    }
+
+    return NextResponse.json({ ok: true, contactUnlocks: result.contactUnlocks });
+  } catch (e) {
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

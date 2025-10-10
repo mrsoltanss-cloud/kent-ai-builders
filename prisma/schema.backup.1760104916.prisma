@@ -1,0 +1,160 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AuditLog {
+  id                           String   @id
+  actorId                      String?
+  action                       String
+  targetId                     String?
+  meta                         Json?
+  createdAt                    DateTime @default(now())
+  leadId                       String?
+  User_AuditLog_actorIdToUser  User?    @relation("AuditLog_actorIdToUser", fields: [actorId], references: [id])
+  User_AuditLog_targetIdToUser User?    @relation("AuditLog_targetIdToUser", fields: [targetId], references: [id])
+
+  @@index([action])
+  @@index([actorId])
+  @@index([createdAt])
+  @@index([targetId])
+}
+
+model Lead {
+  id          String     @id
+  userId      String
+  service     String
+  scope       String?
+  rooms       Int?
+  sqm         Int?
+  propertyAge Int?
+  urgency     Urgency
+  budget      Int?
+  timeline    String?
+  notes       String?
+  status      LeadStatus @default(PENDING)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime
+  description String?
+  details     Json?
+  photos      Json?
+  User        User       @relation(fields: [userId], references: [id])
+}
+
+model User {
+  id                               String       @id
+  email                            String       @unique
+  name                             String?
+  role                             Role         @default(HOMEOWNER)
+  isBlocked                        Boolean      @default(false)
+  blockedAt                        DateTime?
+  blockedReason                    String?
+  createdAt                        DateTime     @default(now())
+  updatedAt                        DateTime
+  passwordHash                     String?
+  password                         String?
+  AuditLog_AuditLog_actorIdToUser  AuditLog[]   @relation("AuditLog_actorIdToUser")
+  AuditLog_AuditLog_targetIdToUser AuditLog[]   @relation("AuditLog_targetIdToUser")
+  Lead                             Lead[]
+  UserProfile                      UserProfile?
+}
+
+model UserProfile {
+  id           String   @id
+  userId       String   @unique
+  postcode     String?
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  phone        String?
+  timeframe    String?
+  propertyType String?
+  ownership    String?
+  accessNotes  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime
+  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum LeadStatus {
+  PENDING
+  CONTACTED
+  WON
+  LOST
+}
+
+enum Role {
+  USER
+  ADMIN
+  BUILDER
+  HOMEOWNER
+}
+
+enum Urgency {
+  FLEXIBLE
+  SOON
+  URGENT
+}
+
+/* ---------- Marketplace models for /trade/jobs ---------- */
+enum JobStatus { OPEN PAUSED CLOSED }
+enum JobTier   { STANDARD QUICKWIN PRIORITY }
+
+model Job {
+  id              String    @id @default(cuid())
+  title           String
+  summary         String?
+  postcode        String
+  priceMin        Int?
+  priceMax        Int?
+  tier            JobTier   @default(STANDARD)
+  status          JobStatus @default(OPEN)
+  views           Int       @default(0)
+  contactUnlocks  Int       @default(0)
+  allocCap        Int       @default(3) // slots
+  aiSeeded        Boolean   @default(false)
+  filledAt        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  trades          JobTradeTag[]
+  intros          JobIntro[]
+
+  @@index([status])
+  @@index([postcode])
+}
+
+model TradeTag {
+  id    String   @id @default(cuid())
+  key   String   @unique
+  label String
+
+  jobs  JobTradeTag[]
+}
+
+model JobTradeTag {
+  jobId   String
+  tradeId String
+  job     Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  trade   TradeTag @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+
+  @@id([jobId, tradeId])
+}
+
+model JobIntro {
+  id           String   @id @default(cuid())
+  jobId        String
+  builderId    String?  // future: link to User (trader)
+  fingerprint  String   // browser/device hash
+  ip           String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+
+  job          Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, fingerprint]) // anti-spam: one per device/job
+}

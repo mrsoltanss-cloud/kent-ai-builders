@@ -1,51 +1,76 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { NextResponse } from "next/server";
+import { db } from "@/lib/prisma";
+
+const toInt = (v?: string | null) => (v && v.trim() ? Number(v) : null);
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const status = searchParams.get('status') ?? 'open';
-  const tradeKey = searchParams.get('trade');
-  const q = searchParams.get('q')?.trim();
-  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
-  const take = Math.min(100, Math.max(1, parseInt(searchParams.get('take') || '20', 10)));
-  const skip = (page - 1) * take;
+  const url = new URL(req.url);
+  const q          = url.searchParams.get("q") || "";
+  const tradeKey   = url.searchParams.get("trade") || "";
+  const tier       = url.searchParams.get("tier") || "";
+  const onlyNew    = url.searchParams.get("new") === "1";
+  const minBudget  = toInt(url.searchParams.get("min"));
+  const maxBudget  = toInt(url.searchParams.get("max"));
+  const sort       = (url.searchParams.get("sort") || "new").toLowerCase(); // new|budget|slots
+  const limit      = Math.min(Number(url.searchParams.get("limit") || 50), 100);
 
-  const where: any = { status };
-  if (q) {
-    where.OR = [
-      { title: { contains: q, mode: 'insensitive' } },
-      { summary: { contains: q, mode: 'insensitive' } },
-      { postcode: { contains: q, mode: 'insensitive' } },
+  const where: any = { status: "OPEN" as const };
+  if (tier) where.tier = tier;
+  if (minBudget != null || maxBudget != null) {
+    where.AND = [
+      minBudget != null ? { priceMin: { gte: minBudget } } : {},
+      maxBudget != null ? { priceMax: { lte: maxBudget } } : {},
     ];
   }
-  if (tradeKey) {
-    where.trades = {
-      some: { trade: { key: tradeKey } }
-    };
+  if (q) {
+    where.OR = [
+      { title:   { contains: q, mode: "insensitive" } },
+      { summary: { contains: q, mode: "insensitive" } },
+      { postcode:{ contains: q, mode: "insensitive" } },
+    ];
   }
+  if (tradeKey) where.trades = { some: { trade: { key: tradeKey } } };
 
-  const [items, total] = await Promise.all([
-    prisma.job.findMany({
-      where,
-      orderBy: [{ createdAt: 'desc' }],
-      skip, take,
-      include: { trades: { include: { trade: true } } }
-    }),
-    prisma.job.count({ where })
-  ]);
+  const jobs = await db.job.findMany({
+    where,
+    orderBy: [{ createdAt: "desc" }], // default backing order
+    take: limit,
+    include: { trades: { include: { trade: true } } },
+  });
 
-  return NextResponse.json({
-    ok: true,
-    page, take, total,
-    items: items.map(j => ({
+  let items = jobs.map(j => {
+    const cap = j.allocCap ?? 3;
+    const introduced = j.contactUnlocks ?? 0;
+    return {
       id: j.id,
       title: j.title,
       summary: j.summary,
       postcode: j.postcode,
-      status: j.status,
       priceMin: j.priceMin,
       priceMax: j.priceMax,
-      trades: j.trades.map(t => ({ key: t.trade.key, label: t.trade.label }))
-    }))
+      tier: j.tier,
+      status: j.status,
+      views: j.views,
+      contactUnlocks: introduced,
+      allocCap: cap,
+      isNew: introduced === 0,
+      allocationFull: introduced >= cap,
+      trades: j.trades.map(t => t.trade.label),
+      createdAt: j.createdAt, // Date ok; we cast when sorting
+    };
   });
+
+  if (onlyNew) items = items.filter(i => i.isNew);
+
+  // client-friendly sorts
+  if (sort === "budget") {
+    items.sort((a, b) => (b.priceMax ?? 0) - (a.priceMax ?? 0));
+  } else if (sort === "slots") {
+    const slots = (x: any) => (x.allocCap ?? 0) - (x.contactUnlocks ?? 0);
+    items.sort((a, b) => slots(b) - slots(a));
+  } else {
+    items.sort((a, b) => new Date(b.createdAt as any).getTime() - new Date(a.createdAt as any).getTime());
+  }
+
+  return NextResponse.json({ items });
 }

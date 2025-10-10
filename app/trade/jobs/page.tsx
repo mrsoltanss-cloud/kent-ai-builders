@@ -1,167 +1,161 @@
-'use client';
+import { db } from "@/lib/prisma";
 
-import { useEffect, useMemo, useState } from 'react';
-
-type Trade = { id: string; key: string; label: string };
-type Job = {
-  id: string;
-  title: string;
-  summary?: string | null;
-  postcode?: string | null;
-  priceMin?: number | null;
-  priceMax?: number | null;
-  status?: string | null;
-  createdAt?: string | null;
-};
-
-async function fetchTrades(): Promise<Trade[]> {
-  const r = await fetch('/api/trade/trades', { cache: 'no-store' });
-  if (!r.ok) return [];
-  const j = await r.json().catch(() => ({}));
-  return j?.trades ?? [];
+// Tier theme map (explicit class strings so Tailwind can tree-shake safely)
+function themeByTier(tier: "STANDARD" | "QUICKWIN" | "PRIORITY") {
+  switch (tier) {
+    case "STANDARD":
+      return {
+        ring: "ring-emerald-500/40",
+        border: "border-emerald-200",
+        hover: "hover:shadow-emerald-200/60",
+        rail: "bg-emerald-500",
+        progress: "bg-emerald-500",
+      };
+    case "QUICKWIN":
+      return {
+        ring: "ring-amber-500/40",
+        border: "border-amber-200",
+        hover: "hover:shadow-amber-200/60",
+        rail: "bg-amber-500",
+        progress: "bg-amber-500",
+      };
+    case "PRIORITY":
+      return {
+        ring: "ring-rose-500/40",
+        border: "border-rose-200",
+        hover: "hover:shadow-rose-200/60",
+        rail: "bg-rose-500",
+        progress: "bg-rose-500",
+      };
+    default:
+      return {
+        ring: "ring-slate-300/40",
+        border: "border-slate-200",
+        hover: "hover:shadow-slate-200/60",
+        rail: "bg-slate-400",
+        progress: "bg-slate-500",
+      };
+  }
 }
 
-async function fetchJobs(params: { q?: string; trade?: string }): Promise<Job[]> {
-  const q = new URLSearchParams();
-  if (params.q) q.set('q', params.q);
-  if (params.trade) q.set('trade', params.trade);
-  const r = await fetch(`/api/jobs?${q.toString()}`, { cache: 'no-store' });
-  if (!r.ok) return [];
-  const j = await r.json().catch(() => ({}));
-  return j?.items ?? [];
+// Derive secondary badge (NEW / High interest / Full)
+function deriveBadge(introduced: number, cap: number, createdAt: Date) {
+  const isNew = Date.now() - new Date(createdAt).getTime() < 36 * 3600 * 1000; // 36h window
+  const full = introduced >= cap;
+  if (full) return { text: "Shortlist full", className: "bg-gray-100 text-gray-700 border border-gray-200" };
+  if (introduced === 0 && isNew) return { text: "NEW — be the first to contact", className: "bg-emerald-50 text-emerald-800 border border-emerald-200" };
+  if (introduced > 0 && introduced < cap) return { text: "High interest", className: "bg-amber-50 text-amber-800 border border-amber-200" };
+  return { text: "Open", className: "bg-sky-50 text-sky-900 border border-sky-200" };
 }
 
-export default function TradeJobsPage() {
-  const [loading, setLoading] = useState(true);
-  const [trades, setTrades] = useState<Trade[]>([]);
-  const [items, setItems] = useState<Job[]>([]);
-  const [q, setQ] = useState('');
-  const [trade, setTrade] = useState('');
-
-  // initial load
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        setLoading(true);
-        const [t, jobs] = await Promise.all([fetchTrades(), fetchJobs({})]);
-        if (mounted) {
-          setTrades(t);
-          setItems(jobs);
-        }
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => { mounted = false; };
-  }, []);
-
-  const onSearch = async () => {
-    setLoading(true);
-    try {
-      const data = await fetchJobs({ q, trade });
-      setItems(data);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const clear = async () => {
-    setQ('');
-    setTrade('');
-    setLoading(true);
-    try {
-      setItems(await fetchJobs({}));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const total = items.length;
-  const header = useMemo(() => {
-    const parts = [];
-    if (trade) parts.push(trades.find(t => t.key === trade)?.label || trade);
-    if (q) parts.push(`“${q}”`);
-    return parts.length ? parts.join(' · ') : 'All jobs';
-  }, [trade, q, trades]);
+export default async function JobsList() {
+  const now = new Date();
+  const jobs = await db.job.findMany({
+    where: {
+      OR: [
+        { status: "OPEN" },
+        { AND: [{ status: "CLOSED" }, { visibleUntil: { gt: now } }] },
+      ],
+    },
+    orderBy: [{ createdAt: "desc" }],
+    take: 100,
+    select: {
+      id: true,
+      title: true,
+      summary: true,
+      postcode: true,
+      priceMin: true,
+      priceMax: true,
+      tier: true,
+      views: true,
+      createdAt: true,
+      contactUnlocks: true,
+      allocCap: true,
+      status: true,
+    },
+  });
 
   return (
-    <main className="mx-auto max-w-5xl p-4 space-y-6">
-      <header className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Jobs</h1>
-        <div className="text-sm text-slate-600">{loading ? 'Loading…' : `${total} job${total === 1 ? '' : 's'}`}</div>
-      </header>
+    <div className="max-w-5xl mx-auto py-8 px-4 space-y-4">
+      <h1 className="text-2xl font-semibold">Jobs</h1>
 
-      <section className="grid gap-3 md:grid-cols-3">
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search by title, summary, postcode…"
-          className="md:col-span-2 w-full border rounded-xl px-3 py-2"
-        />
-        <select
-          value={trade}
-          onChange={(e) => setTrade(e.target.value)}
-          className="w-full border rounded-xl px-3 py-2"
-        >
-          <option value="">All trades</option>
-          {trades.map(t => (
-            <option key={t.id} value={t.key}>{t.label}</option>
-          ))}
-        </select>
+      {jobs.map((j) => {
+        const introduced = j.contactUnlocks ?? 0;
+        const cap = Math.max(1, j.allocCap ?? 3);
+        const slotsLeft = Math.max(0, cap - introduced);
+        const pct = Math.min(100, Math.round((introduced / cap) * 100));
+        const isFull = introduced >= cap || j.status === "CLOSED";
+        const badge = deriveBadge(introduced, cap, j.createdAt);
+        const theme = themeByTier(j.tier as "STANDARD" | "QUICKWIN" | "PRIORITY");
 
-        <div className="md:col-span-3 flex gap-2">
-          <button
-            onClick={onSearch}
-            className="rounded-xl px-4 py-2 bg-black text-white"
-            disabled={loading}
+        return (
+          <a
+            key={j.id}
+            href={`/trade/jobs/${j.id}`}
+            className={[
+              "relative block rounded-2xl border p-4 shadow-sm transition ring-1",
+              theme.border,
+              theme.ring,
+              isFull ? "opacity-60" : `hover:shadow-lg ${theme.hover}`,
+              "bg-white"
+            ].join(" ")}
           >
-            {loading ? 'Searching…' : 'Search'}
-          </button>
-          <button
-            onClick={clear}
-            className="rounded-xl px-4 py-2 border"
-            disabled={loading}
-          >
-            Clear
-          </button>
-        </div>
-      </section>
+            {/* Colored left rail */}
+            <div className={`absolute inset-y-0 left-0 w-1 rounded-l-2xl ${theme.rail}`} />
 
-      <h2 className="text-lg font-medium">{header}</h2>
+            <div className="flex items-center gap-2 mb-2">
+              {/* Tier pill via client bridge */}
+              {/* @ts-expect-error server-to-client boundary */}
+              <TierPillClient tier={j.tier as "STANDARD" | "QUICKWIN" | "PRIORITY"} />
+              <span className={`px-2 py-0.5 text-xs rounded-full ${badge.className}`}>
+                {badge.text}
+              </span>
+            </div>
 
-      <section className="grid gap-4">
-        {items.map(job => (
-          <article key={job.id} className="border rounded-2xl p-4 shadow-sm">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h3 className="text-lg font-semibold">{job.title}</h3>
-                {job.summary && <p className="text-sm text-slate-700 mt-1">{job.summary}</p>}
-                <div className="text-xs text-slate-500 mt-2 flex gap-3">
-                  {job.postcode && <span>Postcode: {job.postcode}</span>}
-                  {(job.priceMin ?? null) !== null && (job.priceMax ?? null) !== null && (
-                    <span>£{job.priceMin?.toLocaleString()} – £{job.priceMax?.toLocaleString()}</span>
-                  )}
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="text-lg font-semibold">{j.title}</h2>
+                {j.summary && <p className="text-gray-700 mt-0.5">{j.summary}</p>}
+
+                <div className="mt-2 flex flex-wrap gap-2 text-sm">
+                  <span className="px-2 py-1 rounded bg-gray-100">📍 {j.postcode}</span>
+                  <span className="px-2 py-1 rounded bg-gray-100">
+                    🧾 £{j.priceMin?.toLocaleString()} — £{j.priceMax?.toLocaleString()}
+                  </span>
+                  <span className="px-2 py-1 rounded bg-gray-100">
+                    🎯 Slots left: {slotsLeft}/{cap}
+                  </span>
+                  <span className="px-2 py-1 rounded bg-gray-100">👀 Views: {j.views ?? 0}</span>
+                </div>
+
+                {/* Progress (themed) */}
+                <div className="mt-3">
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-2 ${isFull ? "bg-gray-400" : theme.progress}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="flex flex-col items-end gap-2">
-                {job.status && (
-                  <span className="text-xs rounded-full border px-2 py-1">{job.status}</span>
-                )}
-                <a
-                  href={`/trade/jobs/${job.id}`}
-                  className="text-sm rounded-xl px-3 py-2 bg-black text-white"
-                >
-                  View / Bid
-                </a>
-              </div>
+
+              {/* Right-side state chip */}
+              {isFull && (
+                <div className="self-start px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+                  Full
+                </div>
+              )}
             </div>
-          </article>
-        ))}
-        {!loading && items.length === 0 && (
-          <div className="text-sm text-slate-600">No jobs found. Try clearing filters.</div>
-        )}
-      </section>
-    </main>
+          </a>
+        );
+      })}
+    </div>
   );
+}
+
+// client bridge for tier chip
+function TierPillClient(props: { tier: "STANDARD" | "QUICKWIN" | "PRIORITY" }) {
+  // @ts-ignore
+  const TierPill = require("./TierPill").default;
+  return <TierPill {...props} />;
 }

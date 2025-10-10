@@ -7,6 +7,44 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id                               String     @id @default(cuid())
+  email                            String     @unique
+  name                             String?
+  role                             Role       @default(USER)
+  isBlocked                        Boolean    @default(false)
+  blockedAt                        DateTime?
+  blockedReason                    String?
+  createdAt                        DateTime   @default(now())
+  updatedAt                        DateTime   @updatedAt
+  passwordHash                     String?
+  password                         String?
+  AuditLog_AuditLog_actorIdToUser  AuditLog[] @relation("AuditLog_actorIdToUser")
+  AuditLog_AuditLog_targetIdToUser AuditLog[] @relation("AuditLog_targetIdToUser")
+  leads                            Lead[]
+}
+
+model Lead {
+  id          String     @id @default(cuid())
+  userId      String
+  service     String
+  scope       String?
+  rooms       Int?
+  sqm         Int?
+  propertyAge Int?
+  urgency     Urgency
+  budget      Int?
+  timeline    String?
+  notes       String?
+  status      LeadStatus @default(PENDING)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  description String?
+  details     Json?
+  photos      Json?
+  user        User       @relation(fields: [userId], references: [id])
+}
+
 model AuditLog {
   id                           String   @id
   actorId                      String?
@@ -24,62 +62,6 @@ model AuditLog {
   @@index([targetId])
 }
 
-model Lead {
-  id          String     @id
-  userId      String
-  service     String
-  scope       String?
-  rooms       Int?
-  sqm         Int?
-  propertyAge Int?
-  urgency     Urgency
-  budget      Int?
-  timeline    String?
-  notes       String?
-  status      LeadStatus @default(PENDING)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime
-  description String?
-  details     Json?
-  photos      Json?
-  User        User       @relation(fields: [userId], references: [id])
-}
-
-model User {
-  id                               String       @id
-  email                            String       @unique
-  name                             String?
-  role                             Role         @default(HOMEOWNER)
-  isBlocked                        Boolean      @default(false)
-  blockedAt                        DateTime?
-  blockedReason                    String?
-  createdAt                        DateTime     @default(now())
-  updatedAt                        DateTime
-  passwordHash                     String?
-  password                         String?
-  AuditLog_AuditLog_actorIdToUser  AuditLog[]   @relation("AuditLog_actorIdToUser")
-  AuditLog_AuditLog_targetIdToUser AuditLog[]   @relation("AuditLog_targetIdToUser")
-  Lead                             Lead[]
-  UserProfile                      UserProfile?
-}
-
-model UserProfile {
-  id           String   @id
-  userId       String   @unique
-  postcode     String?
-  addressLine1 String?
-  addressLine2 String?
-  city         String?
-  phone        String?
-  timeframe    String?
-  propertyType String?
-  ownership    String?
-  accessNotes  String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime
-  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
 enum LeadStatus {
   PENDING
   CONTACTED
@@ -87,15 +69,83 @@ enum LeadStatus {
   LOST
 }
 
-enum Role {
-  USER
-  ADMIN
-  BUILDER
-  HOMEOWNER
-}
-
 enum Urgency {
   FLEXIBLE
   SOON
   URGENT
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+////////////////////////////////////////////////////////////
+// Marketplace module for /trade/jobs (appended by setup) //
+////////////////////////////////////////////////////////////
+
+enum JobStatus {
+  OPEN
+  PAUSED
+  CLOSED
+}
+
+enum JobTier {
+  STANDARD
+  QUICKWIN
+  PRIORITY
+}
+
+model Job {
+  id             String    @id @default(cuid())
+  title          String
+  summary        String?
+  description    String?
+  postcode       String
+  priceMin       Int?
+  priceMax       Int?
+  tier           JobTier   @default(STANDARD)
+  status         JobStatus @default(OPEN)
+  views          Int       @default(0)
+  contactUnlocks Int       @default(0)
+  allocCap       Int       @default(3)
+  aiSeeded       Boolean   @default(false)
+  filledAt       DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  trades       JobTradeTag[]
+  intros       JobIntro[]
+  visibleUntil DateTime?
+
+  @@index([status, visibleUntil])
+}
+
+model TradeTag {
+  id    String        @id @default(cuid())
+  key   String        @unique
+  label String
+  jobs  JobTradeTag[]
+}
+
+model JobTradeTag {
+  jobId   String
+  tradeId String
+  job     Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  trade   TradeTag @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+
+  @@id([jobId, tradeId])
+}
+
+model JobIntro {
+  id          String   @id @default(cuid())
+  jobId       String
+  builderId   String?
+  fingerprint String
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, fingerprint])
 }
