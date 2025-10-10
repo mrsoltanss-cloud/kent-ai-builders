@@ -1,59 +1,28 @@
-"use client";
-import { useEffect, useMemo, useState } from "react";
+'use client';
 
-function getFp(): string {
-  if (typeof window === "undefined") return "server";
-  const k = "kab:fp";
-  let v = localStorage.getItem(k);
-  if (!v) { v = `kab:${navigator.userAgent}`; localStorage.setItem(k, v); }
-  return v;
-}
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function HideJoinedToggle() {
-  const [joined, setJoined] = useState<string[]>([]);
-  const [enabled, setEnabled] = useState<boolean>(false);
+  const router = useRouter();
+  const params = useSearchParams();
+  const checked = params.get('hideJoined') === '1';
 
-  // fetch joined job IDs for this fingerprint
-  useEffect(() => {
-    const fp = getFp();
-    fetch(`/api/trade/intros?fp=${encodeURIComponent(fp)}`)
-      .then(r => r.json())
-      .then(d => setJoined(d.items ?? []))
-      .catch(() => setJoined([]));
-  }, []);
-
-  // apply DOM hide/show without touching server components
-  useEffect(() => {
-    const ids = new Set(joined);
-    const items = Array.from(document.querySelectorAll<HTMLLIElement>("#jobs-list li[data-job-id]"));
-    let hidden = 0;
-    for (const li of items) {
-      const id = li.getAttribute("data-job-id") || "";
-      const shouldHide = enabled && ids.has(id);
-      li.style.display = shouldHide ? "none" : "";
-      if (shouldHide) hidden++;
-    }
-    const badge = document.getElementById("hide-joined-count");
-    if (badge) badge.textContent = hidden ? String(hidden) : "";
-  }, [enabled, joined]);
-
-  const hasAny = joined.length > 0;
-  const label = useMemo(() => (enabled ? "Hiding joined" : "Hide jobs I’ve joined"), [enabled]);
+  function onChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const next = new URLSearchParams(params.toString());
+    if (e.currentTarget.checked) next.set('hideJoined', '1');
+    else next.delete('hideJoined');
+    router.push(`/trade/jobs?${next.toString()}`);
+  }
 
   return (
-    <label className="flex items-center gap-2 px-3 py-2 rounded border bg-white">
+    <label className="inline-flex items-center gap-2 text-sm select-none">
       <input
         type="checkbox"
-        checked={enabled}
-        onChange={(e)=>setEnabled(e.target.checked)}
-        disabled={!hasAny}
+        className="h-4 w-4 accent-emerald-600"
+        defaultChecked={checked}
+        onChange={onChange}
       />
-      <span className={hasAny ? "" : "opacity-60"}>{label}</span>
-      <span
-        id="hide-joined-count"
-        className="text-xs px-1.5 rounded bg-gray-100 text-gray-700"
-        aria-hidden={!enabled}
-      />
+      Hide jobs I’ve joined
     </label>
   );
 }
