@@ -63,3 +63,6 @@ src/app/my/portal/page.tsx.bak.*
 app/my/portal/page.tsx.bak.*
 src/app/my/portal/page.tsx.bak.*
 .env.local
+
+# Ignore local backup snapshots
+backups/*.txt
