@@ -1,0 +1,183 @@
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+// --- Config via env ---
+const DRY_RUN   = /^true$/i.test(process.env.DRY_RUN ?? 'false');
+const LIMIT     = Number(process.env.FIX_LIMIT ?? 50);
+const MIN_WORDS = Number(process.env.MIN_WORDS ?? 80);
+const MAX_WORDS = Number(process.env.MAX_WORDS ?? 140);
+const MODEL     = process.env.GEN_MODEL ?? 'gpt-4o-mini';
+const OPENAI_KEY = process.env.OPENAI_API_KEY ?? '';
+
+// --- Phrases we never want in summaries ---
+const BANNED = [
+  'Straightforward job with clear scope',
+  'Join shortlist for details',
+  'generic and straightforward',
+  'simple job',
+  'click to learn more',
+  'details provided upon shortlist',
+];
+
+function fallbackSummary(job: any): string {
+  const title = job.title ? `**${job.title}**.` : 'This role.';
+  const loc   = job.postcode ? ` Location: ${job.postcode}.` : '';
+  const pay   = (job.priceMin || job.priceMax)
+    ? ` Pay range: ${job.priceMin ?? ''}${job.priceMax ? `–${job.priceMax}` : ''}.` : '';
+  const base  = `${title}${loc}${pay}`;
+  return `${base} Responsibilities include hands-on delivery, coordination with stakeholders, and maintaining high quality standards. Ideal candidates bring recent, relevant experience and can start promptly.`;
+}
+
+async function callOpenAI(prompt: string): Promise<string> {
+  if (!OPENAI_KEY) throw new Error('OPENAI_API_KEY missing');
+
+  const body = {
+    model: MODEL,
+    messages: [
+      { role: 'system', content:
+`You write natural, specific, helpful job summaries.
+Rules:
+- Length ${MIN_WORDS}-${MAX_WORDS} words.
+- Sound human (avoid bland phrases like “Straightforward job with clear scope”, “Join shortlist for details”).
+- Include: role, location (if known), core responsibilities, notable tools/skills if found in description, pay hints if present.
+- One cohesive paragraph, no headings or bullets.` },
+      { role: 'user', content: prompt }
+    ],
+    temperature: 0.6,
+    presence_penalty: 0.1,
+    frequency_penalty: 0.1,
+  };
+
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const txt = await res.text().catch(()=> '');
+    throw new Error(`OpenAI error ${res.status}: ${txt}`);
+  }
+  const json = await res.json();
+  const text = json?.choices?.[0]?.message?.content?.trim?.();
+  if (!text) throw new Error('OpenAI returned empty text');
+  return text;
+}
+
+function looksBad(summary: string): boolean {
+  const words = summary.split(/\s+/).filter(Boolean).length;
+  if (words < MIN_WORDS) return true;
+  const lower = summary.toLowerCase();
+  if (BANNED.some(p => lower.includes(p.toLowerCase()))) return true;
+  if (/straightforward|generic|clear scope/i.test(summary)) return true;
+  if (/join shortlist/i.test(summary)) return true;
+  return false;
+}
+
+function buildPrompt(job: any): string {
+  const lines: string[] = [];
+  lines.push(`Rewrite a ${MIN_WORDS}-${MAX_WORDS} word summary for this job. Avoid bland phrasing and write like a human recruiter.`);
+  lines.push('');
+  const add = (label: string, val: any) => {
+    if (val === null || val === undefined) return;
+    const str = String(val);
+    if (str && str !== 'null' && str !== 'undefined') lines.push(`${label}: ${str}`);
+  };
+  add('Title', job.title);
+  add('Postcode', job.postcode);
+  add('PayRange', `${job.priceMin ?? ''}${job.priceMax ? `–${job.priceMax}` : ''}`);
+  add('Description', job.description ?? job.summary ?? '');
+  lines.push('');
+  lines.push('Return only the single paragraph.');
+  return lines.join('\n');
+}
+
+async function regenerateForJob(job: any): Promise<string> {
+  let attempt = 0;
+  let lastErr: any = null;
+  while (attempt < 2) {
+    try {
+      const draft = await callOpenAI(buildPrompt(job));
+      if (!looksBad(draft)) return draft;
+    } catch (e) {
+
+async function main() {
+  const badPhrase = 'Straightforward job with clear scope';
+
+  // Candidates by phrase/null/empty — ONLY selecting fields known to exist in your schema
+  const candidates = await prisma.job.findMany({
+  if (lastErr && process.env.DEBUG_FALLBACK) {
+    console.warn('LLM fallback:', (lastErr as any)?.message ?? lastErr);
+  }
+  return fallbackSummary(job);
+}
+    where: {
+      OR: [
+        { summary: { contains: badPhrase, mode: 'insensitive' } },
+        { summary: { equals: null } },
+        { summary: { equals: '' } },
+      ],
+    },
+    orderBy: { updatedAt: 'desc' },
+    take: LIMIT,
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      summary: true,
+      postcode: true,
+      priceMin: true,
+      priceMax: true,
+      // Safe core fields below (unused in prompt but safe to select)
+      filledAt: true,
+      updatedAt: true,
+      visibleUntil: true,
+      status: true,
+      tier: true,
+    }
+  });
+
+  // Also catch “too-short” summaries using SQL words heuristic (safe columns only)
+  const shorties = await prisma.$queryRawUnsafe<any[]>(
+    `SELECT id, title, description, summary, postcode, "priceMin", "priceMax"
+     FROM "Job"
+     WHERE summary IS NOT NULL
+       AND length(regexp_replace(summary, '\\s+', ' ', 'g'))
+           - length(replace(regexp_replace(summary, '\\s+', ' ', 'g'), ' ', '')) + 1 < $1
+     ORDER BY "updatedAt" DESC
+     LIMIT $2`,
+     MIN_WORDS, Math.max(0, LIMIT - candidates.length)
+  );
+
+  // merge unique by id
+  const seen = new Set<string>();
+  const jobs: any[] = [];
+  [...candidates, ...shorties].forEach(j => { if (!seen.has(j.id)) { seen.add(j.id); jobs.push(j); }});
+
+  if (jobs.length === 0) {
+    console.log(JSON.stringify({ scanned: 0, updated: 0, reason: 'no-candidates' }));
+    return;
+  }
+
+  let updated = 0;
+  for (const job of jobs) {
+    const newSummary = await regenerateForJob(job);
+    if (DRY_RUN) {
+      console.log(JSON.stringify({ dryRun: true, id: job.id, preview: newSummary.slice(0,160) }));
+      continue;
+    }
+    await prisma.job.update({
+      where: { id: job.id },
+      data: { summary: newSummary, updatedAt: new Date() }
+    });
+    updated++;
+    console.log(JSON.stringify({ id: job.id, updated: true }));
+  }
+
+  console.log(JSON.stringify({ scanned: jobs.length, updated, limit: LIMIT }));
+}
+
+main()
+  .catch(err => { console.error(err); process.exitCode = 1; })
+  .finally(async () => { await prisma.$disconnect(); });

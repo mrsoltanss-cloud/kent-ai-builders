@@ -96,6 +96,8 @@ export default function QuoteClient() {
         {error && <div className="mt-4 p-3 rounded bg-red-50 text-red-600 border border-red-200">{error}</div>}
 
         <form onSubmit={onSubmit} className="mt-8 space-y-6">
+      {/* Honeypot field for spam bots */}
+      <input type="text" name="_company" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
           <div>
             <label className="block text-sm font-medium mb-1">Service</label>
             <select value={service} onChange={(e) => setService(e.target.value)} className="w-full rounded-lg border px-3 py-2">

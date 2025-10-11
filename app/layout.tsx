@@ -1,6 +1,18 @@
+import type { Metadata } from "next";
+import Providers from "./providers";
 import "./globals.css";
-import Providers from "@/components/Providers";
-export const metadata = { title: "Brixel", description: "Brixel — AI-powered building & trades platform" };
+
+export const metadata: Metadata = {
+  title: "Brixel",
+  description: "Brixel — AI-powered building & trades platform",
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return <html lang="en"><body className="min-h-screen bg-white"><Providers>{children}</Providers></body></html>;
+  return (
+    <html lang="en">
+      <body className="min-h-screen bg-white">
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  );
 }
