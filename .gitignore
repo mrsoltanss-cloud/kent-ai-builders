@@ -66,3 +66,6 @@ src/app/my/portal/page.tsx.bak.*
 
 # Ignore local backup snapshots
 backups/*.txt
+
+# Never commit backups with secrets
+backups/
