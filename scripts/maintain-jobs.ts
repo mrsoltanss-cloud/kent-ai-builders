@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { randomKentPostcode } from "./lib/postcodes";
 const db = new PrismaClient();
 
 const now = () => new Date();
@@ -157,10 +158,106 @@ async function closeExpired() {
 
 async function main() {
   const a = await topUpOpenJobs();
-  const b = await autoFillAiSlots(2);
+  const b = await autoFillAiSlotsSmart();
   const c = await markFilled();
   const d = await closeExpired();
   const e = await dripViews(12);
   console.log(JSON.stringify({ toppedUp:a, autoFilled:b, newlyFilled:c, expiredClosed:d, viewsDripped:e }));
 }
 main().finally(() => db.$disconnect());
+/* ========= Smart, throttled autofill policy (business hours + age gate + probabilistic) ========= */
+function parseHourRanges(spec?: string): Array<[number,number]> {
+  if (!spec) return [];
+  return spec.split(",").map(seg => {
+    const [a,b] = seg.trim().split("-").map(Number);
+    if (Number.isFinite(a) && Number.isFinite(b)) return [a,b] as [number,number];
+    return [0,24] as [number,number];
+  });
+}
+function inHourRanges(d: Date, ranges: Array<[number,number]>): boolean {
+  if (!ranges.length) return true;
+  const h = d.getHours();
+  return ranges.some(([a,b]) => (a<=b ? (h>=a && h<b) : (h>=a || h<b)));
+}
+function inAllowedDays(d: Date, daysSpec?: string): boolean {
+  // JS: 0=Sun ... 6=Sat ; spec uses 1-7 (Mon=1 .. Sun=7) or ranges like "1-5"
+  if (!daysSpec) return true;
+  const js = d.getDay(); // 0..6
+  const toMon1 = (js===0?7:js); // 1..7
+  return daysSpec.split(",").some(seg => {
+    const [a,b] = seg.trim().split("-").map(Number);
+    if (Number.isFinite(a) && Number.isFinite(b)) return toMon1>=a && toMon1<=b;
+    if (Number.isFinite(a)) return toMon1===a;
+    return true;
+  });
+}
+function hoursFromNow(h: number): Date {
+  return new Date(Date.now() + h*3600*1000);
+}
+
+/**
+ * Smart throttled autofill:
+ * - Only during AUTOFILL_BUSINESS_HOURS (e.g. "09-17") and AUTOFILL_DAYS (e.g. "1-5")
+ * - Only jobs older than AUTOFILL_MIN_AGE_HOURS
+ * - Reserve last slot (don't take the final slot) if AUTOFILL_RESERVE_LAST_SLOT=1
+ * - Probabilistic per-run: with AUTOFILL_RUN_PROB chance, pick up to AUTOFILL_MAX_PER_RUN jobs
+ */
+async function autoFillAiSlotsSmart() {
+  // Allow quick kill-switch
+  if (process.env.DISABLE_AUTOFILL === "1") {
+    return 0;
+  }
+
+  const now = new Date();
+  const businessRanges = parseHourRanges(process.env.AUTOFILL_BUSINESS_HOURS || "09-17");
+  const daysSpec = process.env.AUTOFILL_DAYS || "1-5"; // Mon-Fri default
+
+  // Off-hours? skip gracefully.
+  if (!inHourRanges(now, businessRanges) || !inAllowedDays(now, daysSpec)) {
+    return 0;
+  }
+
+  const minAgeHours = Number(process.env.AUTOFILL_MIN_AGE_HOURS ?? 12);
+  const ageCutoff = hoursFromNow(-minAgeHours);
+
+  const reserveLast = (process.env.AUTOFILL_RESERVE_LAST_SLOT ?? "1") === "1";
+  const runProb = Math.max(0, Math.min(1, Number(process.env.AUTOFILL_RUN_PROB ?? 0.15))); // 15% per run
+  const maxPerRun = Math.max(0, Number(process.env.AUTOFILL_MAX_PER_RUN ?? 1));
+
+  // Gather candidates (filter exact slot rule in JS)
+  const candidates = await db.job.findMany({
+    where: {
+      status: "OPEN",
+      aiSeeded: true,
+      createdAt: { lt: ageCutoff },
+    },
+    select: { id: true, contactUnlocks: true, allocCap: true },
+    orderBy: { createdAt: "asc" },
+    take: 200,
+  });
+
+  const eligible = candidates.filter(j => {
+    const cap = j.allocCap ?? 3;
+    const intro = j.contactUnlocks ?? 0;
+    if (cap <= 0) return false;
+    if (reserveLast) return (intro + 1) < cap; // never consume the last slot
+    return intro < cap;
+  });
+
+  if (!eligible.length) return 0;
+
+  // With probability runProb, pick up to maxPerRun random jobs this cycle
+  let picked = 0;
+  if (Math.random() < runProb) {
+    // shuffle
+    for (let i = eligible.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [eligible[i], eligible[j]] = [eligible[j], eligible[i]];
+    }
+    for (const j of eligible.slice(0, maxPerRun)) {
+      await db.job.update({ where: { id: j.id }, data: { contactUnlocks: { increment: 1 } } });
+      picked++;
+    }
+  }
+  return picked;
+}

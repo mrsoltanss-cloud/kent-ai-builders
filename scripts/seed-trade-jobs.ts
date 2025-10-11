@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { randomKentPostcode } from "./lib/postcodes";
 const db = new PrismaClient();
 
 const KENT_AREAS: Record<string, number[]> = {
