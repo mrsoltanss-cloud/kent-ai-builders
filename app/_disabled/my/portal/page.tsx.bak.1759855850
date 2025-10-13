@@ -1,0 +1,371 @@
+"use client";
+
+import * as React from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { signOut } from "next-auth/react";
+
+/** ===== Types ===== */
+type LeadStatus =
+  | "new"
+  | "pending_review"
+  | "awaiting_contact"
+  | "scheduled"
+  | "in_progress"
+  | "complete"
+  | "archived"
+  | "cancelled";
+
+type Lead = {
+  id: string;
+  service: string;
+  scope?: string | null;
+  rooms?: number | null;
+  squareMeters?: number | null;
+  propertyAge?: string | null;
+  urgency?: "urgent" | "soon" | "planning" | null;
+  budget?: number | null;
+  timeline?: string | null;
+  contact?: string | null; // "WhatsApp", "Email", etc.
+  status: LeadStatus;
+  aiMin?: number | null;
+  aiMax?: number | null;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+};
+
+/** ===== Env (client-safe) =====
+ * Client code may only read NEXT_PUBLIC_* variables.
+ */
+const WHATSAPP = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "+447000000000").replace(/\D/g, "");
+const SALES_EMAIL = process.env.NEXT_PUBLIC_SALES_EMAIL ?? "hello@brixel.uk";
+
+/** ===== Small UI bits ===== */
+function SignOutButton({ className = "" }: { className?: string }) {
+  return (
+    <button
+      type="button"
+      aria-label="Sign out"
+      onClick={() => signOut({ callbackUrl: "/" })}
+      className={`rounded-full border px-4 py-1.5 text-sm font-medium hover:bg-gray-50 ${className}`}
+    >
+      Sign out
+    </button>
+  );
+}
+
+function PrimaryBtn({
+  title,
+  onClick,
+  children,
+  className = "",
+}: {
+  title?: string;
+  onClick?: () => void;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold shadow-sm ring-1 ring-emerald-600/15 bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function SecondaryBtn({
+  title,
+  onClick,
+  children,
+  className = "",
+}: {
+  title?: string;
+  onClick?: () => void;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      className={`inline-flex items-center justify-center rounded-xl px-3 py-1.5 text-sm font-medium border hover:bg-gray-50 ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** ----- Modal for details ----- */
+type DetailsModalProps = {
+  open: boolean;
+  onClose: () => void;
+  lead: Lead | null;
+};
+
+function DetailsModal(props: DetailsModalProps) {
+  const { open, onClose, lead } = props;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    if (open) document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open || !lead) return null;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Lead details</h3>
+          <button
+            className="rounded-full border px-2 py-1 text-sm"
+            onClick={onClose}
+          >
+            Close
+          </button>
+        </div>
+
+        <div className="mt-4 space-y-2 text-sm">
+          <div>
+            <span className="font-medium">Service:</span> {lead.service}
+          </div>
+          {lead.scope ? (
+            <div>
+              <span className="font-medium">Scope:</span> {lead.scope}
+            </div>
+          ) : null}
+          <div className="grid grid-cols-2 gap-2">
+            {lead.rooms != null && (
+              <div>
+                <span className="font-medium">Rooms:</span> {lead.rooms}
+              </div>
+            )}
+            {lead.squareMeters != null && (
+              <div>
+                <span className="font-medium">Size:</span> {lead.squareMeters} m²
+              </div>
+            )}
+            {lead.propertyAge && (
+              <div>
+                <span className="font-medium">Property age:</span> {lead.propertyAge}
+              </div>
+            )}
+            {lead.urgency && (
+              <div>
+                <span className="font-medium">Urgency:</span> {lead.urgency}
+              </div>
+            )}
+            {lead.budget != null && (
+              <div>
+                <span className="font-medium">Budget:</span> £{lead.budget}
+              </div>
+            )}
+            {lead.timeline && (
+              <div>
+                <span className="font-medium">Timeline:</span> {lead.timeline}
+              </div>
+            )}
+          </div>
+          {(lead.aiMin != null || lead.aiMax != null) && (
+            <div className="mt-2 rounded-lg bg-emerald-50 p-3">
+              <div className="text-[13px] font-medium text-emerald-900">
+                AI estimate range
+              </div>
+              <div className="text-sm">
+                £{lead.aiMin ?? "–"} – £{lead.aiMax ?? "–"}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-5 flex items-center justify-end gap-2">
+          <SecondaryBtn onClick={onClose}>Close</SecondaryBtn>
+          <PrimaryBtn
+            title="Chat on WhatsApp"
+            onClick={() => (window.location.href = `https://wa.me/${WHATSAPP}`)}
+          >
+            Chat on WhatsApp
+          </PrimaryBtn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** ----- Stage helpers ----- */
+const STAGES = [
+  { key: "new", label: "New" },
+  { key: "pending_review", label: "Pending" },
+  { key: "scheduled", label: "Scheduled" },
+  { key: "in_progress", label: "In Progress" },
+  { key: "complete", label: "Complete" },
+] as const;
+
+type StageKey = (typeof STAGES)[number]["key"];
+
+/** ===== Page ===== */
+export default function Page() {
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [selected, setSelected] = useState<Lead | null>(null);
+  const [open, setOpen] = useState(false);
+
+  // TODO: replace with real fetch to your API/DB
+  useEffect(() => {
+    setLeads((prev) =>
+      prev.length
+        ? prev
+        : [
+            {
+              id: "demo-1",
+              service: "Bathroom Renovation",
+              scope: "Full refit incl. tiling & plumbing",
+              rooms: 1,
+              squareMeters: 8,
+              propertyAge: "1970s",
+              urgency: "soon",
+              budget: 7500,
+              timeline: "2–4 weeks",
+              contact: "WhatsApp",
+              status: "new",
+              aiMin: 6500,
+              aiMax: 9000,
+            },
+          ]
+    );
+  }, []);
+
+  const moveForward = (id: string) =>
+    setLeads((prev) =>
+      prev.map((l) => {
+        if (l.id !== id) return l;
+        const idx = STAGES.findIndex((s) => s.key === l.status);
+        const next = STAGES[Math.min(idx + 1, STAGES.length - 1)].key as StageKey;
+        return { ...l, status: next };
+      })
+    );
+
+  const moveBack = (id: string) =>
+    setLeads((prev) =>
+      prev.map((l) => {
+        if (l.id !== id) return l;
+        const idx = STAGES.findIndex((s) => s.key === l.status);
+        const prevIdx = Math.max(idx - 1, 0);
+        return { ...l, status: STAGES[prevIdx].key as StageKey };
+      })
+    );
+
+  const del = (id: string) => setLeads((prev) => prev.filter((l) => l.id !== id));
+  const archive = (id: string) =>
+    setLeads((prev) =>
+      prev.map((l) => (l.id === id ? { ...l, status: "archived" } : l))
+    );
+
+  const mailto = `mailto:${SALES_EMAIL}?subject=${encodeURIComponent(
+    "Book my job"
+  )}&body=${encodeURIComponent("Hi team, I'd like to get this started...")}`;
+
+  return (
+    <main className="mx-auto max-w-4xl p-6">
+      <header className="mb-6 flex items-center justify-between">
+        <h1 className="text-xl font-semibold">My Portal</h1>
+        <SignOutButton />
+      </header>
+
+      <div className="mb-3">
+        <PrimaryBtn
+          title="Chat on WhatsApp"
+          onClick={() => (window.location.href = `https://wa.me/${WHATSAPP}`)}
+        >
+          <span>💬 Chat on WhatsApp</span>
+        </PrimaryBtn>
+        <div className="mt-1 text-[13px] font-semibold text-emerald-700/95">
+          Start here — chat to us on WhatsApp to progress your booking.
+          <span className="ml-1 font-normal text-slate-600">
+            No WhatsApp?{" "}
+            <Link className="underline" href={mailto}>
+              Email us instead
+            </Link>
+            .
+          </span>
+        </div>
+      </div>
+
+      <section className="mt-6 space-y-4">
+        {leads.length === 0 ? (
+          <div className="rounded-xl border p-6 text-sm text-slate-600">
+            No leads yet.
+          </div>
+        ) : (
+          leads.map((lead) => (
+            <div
+              key={lead.id}
+              className="rounded-2xl border p-5 shadow-sm hover:shadow"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-sm text-slate-500">Lead ID: {lead.id}</div>
+                  <div className="mt-1 text-lg font-semibold">
+                    {lead.service}
+                  </div>
+                  {lead.scope && (
+                    <div className="text-sm text-slate-600">{lead.scope}</div>
+                  )}
+                  {(lead.aiMin != null || lead.aiMax != null) && (
+                    <div className="mt-2 text-sm">
+                      AI range: £{lead.aiMin ?? "–"} – £{lead.aiMax ?? "–"}
+                    </div>
+                  )}
+                  <div className="mt-2 text-xs uppercase tracking-wide text-slate-500">
+                    Status: {lead.status}
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <SecondaryBtn
+                    title="Details"
+                    onClick={() => {
+                      setSelected(lead);
+                      setOpen(true);
+                    }}
+                  >
+                    Details
+                  </SecondaryBtn>
+                  <SecondaryBtn title="Back" onClick={() => moveBack(lead.id)}>
+                    ◀ Back
+                  </SecondaryBtn>
+                  <SecondaryBtn
+                    title="Forward"
+                    onClick={() => moveForward(lead.id)}
+                  >
+                    Forward ▶
+                  </SecondaryBtn>
+                  <SecondaryBtn title="Archive" onClick={() => archive(lead.id)}>
+                    Archive
+                  </SecondaryBtn>
+                  <SecondaryBtn title="Delete" onClick={() => del(lead.id)}>
+                    Delete
+                  </SecondaryBtn>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </section>
+
+      <DetailsModal open={open} onClose={() => setOpen(false)} lead={selected} />
+    </main>
+  );
+}

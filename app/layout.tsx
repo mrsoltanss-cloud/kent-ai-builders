@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Providers from "./providers";
 import "./globals.css";
+import { Toaster } from 'sonner'
 
 export const metadata: Metadata = {
   title: "Brixel",

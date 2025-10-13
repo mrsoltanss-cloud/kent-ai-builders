@@ -126,7 +126,6 @@ export default function JobsListClient({ initial }: { initial: JobItem[] }) {
                   <Link href={`/trade/jobs/${j.id}`} className="link link-hover text-sm">
                     View details
                   </Link>
-                  {/* @ts-expect-error Client component import at runtime */}
                   <JoinBtn jobId={j.id} introduced={introduced} cap={cap} />
                 </div>
               </div>

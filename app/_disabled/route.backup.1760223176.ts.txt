@@ -1,0 +1,47 @@
+// app/api/jobs/route.ts
+import { NextResponse } from 'next/server'
+import { db } from '@/lib/prisma'
+
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url)
+  const sort = searchParams.get('sort') ?? 'new'
+
+  let orderBy: any = { createdAt: 'desc' as const }
+  if (sort === 'price') orderBy = { priceMin: 'asc' as const }
+  else if (sort === 'slots') orderBy = { contactUnlocks: 'asc' as const }
+
+  const now = new Date()
+
+  // Prefer OPEN jobs; show CLOSED only if still visible
+  const wherePreferred: any = {
+    OR: [
+      { status: 'OPEN' },
+      { AND: [{ status: 'CLOSED' }, { visibleUntil: { gt: now } }] },
+    ],
+  }
+
+  try {
+    // Primary attempt: includes visibleUntil filter (if it exists in schema)
+    const jobs = await db.job.findMany({
+      where: wherePreferred,
+      orderBy,
+      take: 200,
+      // No 'select' — return whatever columns exist in the current schema
+    })
+    return NextResponse.json({ jobs })
+  } catch (err: any) {
+    // If schema doesn't have visibleUntil or other fields, fall back gracefully
+    console.warn('Primary jobs query failed, falling back to OPEN-only.', err?.message || err)
+    try {
+      const jobs = await db.job.findMany({
+        where: { status: 'OPEN' },
+        orderBy,
+        take: 200,
+      })
+      return NextResponse.json({ jobs, fallback: true })
+    } catch (err2: any) {
+      console.error('Jobs fallback also failed:', err2?.message || err2)
+      return NextResponse.json({ error: 'Failed to load jobs' }, { status: 500 })
+    }
+  }
+}

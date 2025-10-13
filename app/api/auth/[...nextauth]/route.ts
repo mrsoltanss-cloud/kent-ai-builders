@@ -1,55 +1,60 @@
 import NextAuth from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
+import EmailProvider from "next-auth/providers/email";
+import { db } from "@/lib/prisma";
 
-function parseWhitelist(raw?: string | null): string[] {
-  if (!raw) return [];
-  return raw
-    .split(/[\n,]/g)
-    .map(s => s.trim().toLowerCase())
-    .filter(Boolean);
-}
+const providers = [
+  GoogleProvider({
+    clientId: process.env.GOOGLE_CLIENT_ID || "",
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+  }),
+  EmailProvider({
+    server: process.env.EMAIL_SERVER,
+    from: process.env.EMAIL_FROM,
+  }),
+];
 
-export const authOptions = {
-  providers: [
-    CredentialsProvider({
-      name: "Admin password",
-      credentials: {
-        email: { label: "Email", type: "text" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(creds) {
-        const email = (creds?.email || "").trim().toLowerCase();
-        const pass  = String(creds?.password || "");
-
-        const whitelist = parseWhitelist(process.env.ADMIN_LOGIN_EMAILS || "");
-        const adminPass = process.env.ADMIN_PASSWORD || "";
-
-        // Minimal hardening
-        if (!email || !pass) return null;
-        if (!whitelist.includes(email)) return null;
-        if (adminPass.length === 0) return null;
-        if (pass !== adminPass) return null;
-
-        // Return a basic user object; role is enforced elsewhere
-        return { id: email, name: "Admin", email };
-      },
-    }),
-  ],
-  pages: {
-    signIn: "/admin/portal", // keep your custom page
-  },
+const authOptions = {
+  providers,
   session: { strategy: "jwt" as const },
+  pages: { signIn: "/api/auth/signin" },
   callbacks: {
-    async jwt({ token, user }) {
-      if (user?.email) token.email = user.email;
+    async jwt({ token, user }: any) {
+      if (user?.email) {
+        const dbUser = await db.user.upsert({
+          where: { email: user.email },
+          update: {},
+          create: {
+            email: user.email,
+            name: user.name ?? null,
+            image: (user as any)?.image ?? null,
+            role: "BUILDER",
+          },
+          select: { id: true, role: true, name: true, image: true, email: true },
+        });
+        (token as any).role = dbUser.role;
+        (token as any).uid = dbUser.id;
+      } else if (!(token as any).role && token?.email) {
+        const existing = await db.user.findUnique({
+          where: { email: token.email as string },
+          select: { id: true, role: true },
+        });
+        if (existing) {
+          (token as any).role = existing.role;
+          (token as any).uid = existing.id;
+        }
+      }
       return token;
     },
-    async session({ session, token }) {
-      if (token?.email) session.user = { ...session.user, email: String(token.email) };
+    async session({ session, token }: any) {
+      if (session.user) {
+        (session.user as any).role = (token as any)?.role ?? "BUILDER";
+        (session.user as any).id = (token as any)?.uid ?? null;
+      }
       return session;
     },
   },
 };
 
-const handler = NextAuth(authOptions as any);
+const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };

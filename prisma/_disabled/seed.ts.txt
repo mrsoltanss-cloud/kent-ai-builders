@@ -1,0 +1,77 @@
+import { PrismaClient } from '@prisma/client'
+import { randomUUID, createHash } from 'crypto'
+
+const prisma = new PrismaClient()
+
+async function main() {
+  console.log('🌱 Seeding admin + demo marketplace data...')
+
+  // Admin
+  const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "owner@brixel.uk"
+  const existing = await prisma.user.findFirst({ where: { email: ADMIN_EMAIL } })
+  if (!existing) {
+    await prisma.user.create({
+      data: {
+        id: randomUUID(),
+        email: ADMIN_EMAIL,
+        name: "Site Owner",
+        createdAt: new Date(),
+      },
+    })
+  }
+
+  const jobTitles = [
+    "Loft Conversion in Maidstone",
+    "Kitchen Renovation in Canterbury",
+    "Bathroom Refurbishment in Ashford",
+    "Extension Build in Gillingham",
+    "Roof Replacement in Dover",
+  ]
+
+  const tiers = ["STANDARD", "QUICKWIN", "PRIORITY"] as const
+
+  for (const [i, title] of jobTitles.entries()) {
+    const now = new Date()
+    const min = Math.floor(Math.random() * 4000) + 3000
+    const max = min + Math.floor(Math.random() * 8000) + 4000
+    const tier = tiers[i % tiers.length]
+
+    // Job (matches your current columns)
+    const job = await prisma.job.create({
+      data: {
+        id: randomUUID(),
+        title,
+        summary: `${title} — professional builders wanted.`,
+        priceMin: min,
+        priceMax: max,
+        tier,                 // one of STANDARD|QUICKWIN|PRIORITY
+        status: "OPEN",       // one of OPEN|PAUSED|CLOSED
+        views: 0,
+        contactUnlocks: 0,
+        allocCap: 1,
+        aiSeeded: true,
+        createdAt: now,
+      },
+    })
+
+    // JobIntro (NO "summary" column; required fingerprint)
+    const fingerprint = createHash('sha256').update(title + job.id).digest('hex')
+    await prisma.jobIntro.create({
+      data: {
+        id: randomUUID(),
+        jobId: job.id,
+        fingerprint,
+        ip: "127.0.0.1",
+        userAgent: "SeederScript/1.0",
+        // createdAt has DEFAULT NOW(), but ok to set explicitly:
+        createdAt: now,
+      },
+    })
+  }
+
+  console.log('✅ Demo jobs + admin seeded successfully.')
+}
+
+main()
+  .catch((e) => { console.error(e); process.exit(1) })
+  .finally(async () => { await prisma.$disconnect() })

@@ -21,7 +21,7 @@ export default function SavedSearches() {
     } catch { /* noop */ }
   }, []);
 
-  const currentQuery = useMemo(() => sp.toString(), [sp]);
+  const currentQuery = useMemo(() => sp?.toString?.() ?? "", [sp]);
 
   function saveCurrent() {
     const name = prompt('Name this search (e.g. "Priority bathrooms <£2k")');

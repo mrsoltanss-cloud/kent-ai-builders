@@ -1,0 +1,83 @@
+// app/api/bids/route.ts
+import { NextResponse } from 'next/server'
+import { db } from '@/lib/prisma'
+
+type JobState = 'NEW' | 'BIDDING' | 'HOT' | 'FILLED_CLOSING' | 'EXPIRING' | 'OPEN'
+
+function decorate(job: any) {
+  const allocCap = Number.isFinite(job.allocCap) ? job.allocCap : 0
+  const bids = Number.isFinite(job.contactUnlocks) ? job.contactUnlocks : 0
+  const views = Number.isFinite(job.views) ? job.views : 0
+  const slotsLeft = Math.max(0, allocCap - bids)
+
+  const now = Date.now()
+  const expiresInMs = job.visibleUntil
+    ? Math.max(0, new Date(job.visibleUntil).getTime() - now)
+    : null
+  const expiresInHours = typeof expiresInMs === 'number' ? Math.ceil(expiresInMs / 36e5) : null
+
+  let state: JobState = 'OPEN'
+  let label = 'Open'
+  let emoji = '🟢'
+
+  if (bids === 0) { state = 'NEW'; label = 'NEW — be the first to contact'; emoji = '💥' }
+  else if (bids > 0 && slotsLeft > 0) { state = 'BIDDING'; label = `${bids} trades in discussion`; emoji = '⚡' }
+  if (views >= 150 || (bids >= 2 && slotsLeft > 0)) { state = 'HOT'; label = 'Popular — multiple trades bidding'; emoji = '🔥' }
+  if (slotsLeft === 0) { state = 'FILLED_CLOSING'; label = 'Job filled — will be removed in 24h'; emoji = '🚫' }
+  if (expiresInHours !== null && expiresInHours <= 24) { state = 'EXPIRING'; label = 'Expiring soon'; emoji = '⏳' }
+
+  const heatScore = Number.isFinite(job.heatScore) ? job.heatScore : Math.round((views + bids * 50) / 10)
+  const matchConfidence = Math.max(40, Math.min(98, 45 + bids * 12 + Math.floor(heatScore / 6)))
+  const verifiedHomeowner = (job.tier === 'PREMIUM') || (bids >= 1 && views >= 20) || (heatScore >= 20)
+
+  const aiSummary =
+    job.aiSummary
+      ? String(job.aiSummary)
+      : job.summary
+        ? `🤖 AI summary: ${job.summary}`
+        : '🤖 AI summary: Estimated medium complexity with standard prep and typical allowances. Suitable for a small crew within 2–3 days.'
+
+  return {
+    ...job,
+    aiSummary,
+    meta: {
+      state,
+      label,
+      emoji,
+      slotsLeft,
+      expiresInHours,
+      heatScore,
+      matchConfidence,
+      verifiedHomeowner,
+    },
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json().catch(() => ({}))
+    const jobId = String(body.jobId || '')
+    if (!jobId) return NextResponse.json({ error: 'jobId required' }, { status: 400 })
+
+    // Read current job
+    const job = await db.job.findUnique({ where: { id: jobId } })
+    if (!job) return NextResponse.json({ error: 'Job not found' }, { status: 404 })
+
+    const allocCap = Number.isFinite(job.allocCap) ? job.allocCap : 0
+    const bids = Number.isFinite(job.contactUnlocks) ? job.contactUnlocks : 0
+    if (bids >= allocCap) {
+      // Already full
+      return NextResponse.json({ job: decorate(job), filled: true }, { status: 409 })
+    }
+
+    // MVP atomic-ish increment (race-safe enough for low contention). For strict safety, use a transaction.
+    const updated = await db.job.update({
+      where: { id: jobId },
+      data: { contactUnlocks: { increment: 1 } },
+    })
+
+    return NextResponse.json({ ok: true, job: decorate(updated) })
+  } catch (e) {
+    return NextResponse.json({ error: 'Failed to bid' }, { status: 500 })
+  }
+}

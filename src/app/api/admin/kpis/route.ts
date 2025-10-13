@@ -50,11 +50,11 @@ export async function GET() {
     const key = weekKey(d)
     map.set(key, { week: key, users: 0, leads: 0 })
   }
-  usersRaw.forEach(u => {
+  usersRaw.forEach((u: any) => {
     const key = weekKey(u.createdAt)
     if (map.has(key)) map.get(key)!.users++
   })
-  leadsRaw.forEach(l => {
+  leadsRaw.forEach((l: any) => {
     const key = weekKey(l.createdAt)
     if (map.has(key)) map.get(key)!.leads++
   })
@@ -63,7 +63,7 @@ export async function GET() {
   // status breakdown
   const statuses = ["PENDING","CONTACTED","WON","LOST"] as const
   const statusMap: Record<string, number> = Object.fromEntries(statuses.map(s => [s, 0]))
-  statusCounts.forEach(l => { statusMap[l.status] = (statusMap[l.status] ?? 0) + 1 })
+  statusCounts.forEach((l: any) => { statusMap[l.status] = (statusMap[l.status] ?? 0) + 1 })
 
   return Response.json({
     ok: true,

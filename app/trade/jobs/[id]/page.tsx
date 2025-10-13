@@ -1,88 +1,147 @@
-import { db } from "@/lib/prisma";
+import * as React from 'react'
 
-export default async function JobDetail({ params }: { params: { id: string } }) {
-  const job = await db.job.findUnique({ where: { id: params.id } });
-  if (!job) return <div className="max-w-3xl mx-auto py-10">Job not found.</div>;
+type Job = {
+  id: string
+  title: string
+  summary?: string | null
+  priceMin?: number | null
+  priceMax?: number | null
+  tier?: 'QUICKWIN' | 'STANDARD' | 'PREMIUM' | null
+  status?: string | null
+  views?: number | null
+  contactUnlocks?: number | null
+  allocCap?: number | null
+  createdAt?: string | Date | null
+  visibleUntil?: string | Date | null
+  meta?: any
+}
 
-  const introduced = job.contactUnlocks ?? 0;
-  const cap = job.allocCap ?? 3;
-  const slotsLeft = Math.max(0, cap - introduced);
-  const pct = Math.min(100, Math.round((introduced / Math.max(1, cap)) * 100));
-  const full = introduced >= cap || job.status === "CLOSED";
+export default async function JobDetailsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = await params
+  return <ClientJob id={id} />
+}
 
-  const creditCost = job.tier === "PRIORITY" ? 3 : job.tier === "QUICKWIN" ? 2 : 1;
+function fmtGBP(min?: number | null, max?: number | null) {
+  if (!min && !max) return '—'
+  const f = (n: number) =>
+    new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 }).format(n)
+  return [min, max].filter((v) => typeof v === 'number').map((n) => f(n as number)).join(' – ')
+}
 
+function TierBadge({ tier }: { tier?: string | null }) {
+  const map: Record<string, string> = {
+    QUICKWIN: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    STANDARD: 'bg-sky-100 text-sky-800 border-sky-200',
+    PREMIUM:  'bg-indigo-100 text-indigo-800 border-indigo-200',
+  }
+  const cls = map[tier ?? 'STANDARD'] ?? map.STANDARD
+  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs border ${cls}`}>{tier ?? 'STANDARD'}</span>
+}
+
+function TierProgress({ job }: { job: Job }) {
+  const bids = job.contactUnlocks ?? 0
+  const total = job.allocCap ?? 3
+  const pct = Math.min(100, Math.round((Math.max(0, bids) / Math.max(1, total)) * 100))
+  const map: Record<string, { bg: string; fill: string }> = {
+    QUICKWIN: { bg: 'bg-emerald-100', fill: 'bg-emerald-500' },
+    STANDARD: { bg: 'bg-sky-100',     fill: 'bg-sky-500' },
+    PREMIUM:  { bg: 'bg-indigo-100',  fill: 'bg-indigo-500' },
+  }
+  const theme = map[job.tier ?? 'STANDARD'] ?? map.STANDARD
   return (
-    <div className="max-w-3xl mx-auto py-10 space-y-5">
-      <a href="/trade/jobs" className="text-sm underline">← Back to jobs</a>
-
-      <div className="bg-white rounded-2xl border shadow-sm p-5 relative">
-        {/* Full banner */}
-        {full && (
-          <div className="absolute right-4 top-4 px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-            Shortlist full
-          </div>
-        )}
-
-        <h1 className="text-2xl font-semibold">{job.title}</h1>
-        {job.summary && <p className="text-gray-700 mt-1">{job.summary}</p>}
-
-        <div className="mt-3 flex flex-wrap gap-3 text-sm">
-          <span className="px-2 py-1 rounded bg-gray-100">📍 {job.postcode}</span>
-          <span className="px-2 py-1 rounded bg-gray-100">
-            🧾 £{job.priceMin?.toLocaleString()} — £{job.priceMax?.toLocaleString()}
-          </span>
-          <span className="px-2 py-1 rounded bg-gray-100 flex items-center gap-2">
-            Tier:
-            {/* @ts-expect-error server-to-client boundary */}
-            <TierPillClient tier={job.tier as "STANDARD" | "QUICKWIN" | "PRIORITY"} />
-          </span>
-          <span className="px-2 py-1 rounded bg-gray-100">👀 {job.views ?? 0} views</span>
-        </div>
-
-        <div className="mt-4">
-          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div className="h-2 bg-amber-500" style={{ width: `${pct}%` }} />
-          </div>
-          <div className="text-sm text-gray-600 mt-1">
-            {introduced} / {cap} introduced — {slotsLeft} slots left
-          </div>
-        </div>
-
-        {/* How joining works */}
-        <div className="mt-5 rounded-xl border border-sky-200 bg-sky-50 text-sky-900 p-4">
-          <p className="font-medium">How joining works</p>
-          <ul className="text-sm mt-2 list-disc ml-5 space-y-1">
-            <li>Costs <strong>{creditCost} credit{creditCost > 1 ? "s" : ""}</strong> to join this shortlist.</li>
-            <li>The homeowner sees your <strong>profile & contact details</strong> after you join.</li>
-            <li>We’ll notify you if you’re <strong>put forward</strong>; no extra credits to message.</li>
-            <li>If the shortlist fills up, this job is marked <strong>full</strong> and will disappear after 72 hours.</li>
-          </ul>
-        </div>
-
-        {/* CTA */}
-        <div className="mt-4">
-          {/* @ts-expect-error client */}
-          <JoinShortlist jobId={job.id} introduced={introduced} cap={cap} />
-          <p className="text-xs text-gray-500 mt-2">
-            By joining, you agree to spend {creditCost} credit{creditCost > 1 ? "s" : ""}. Credits are only used on join, not per message.
-          </p>
-        </div>
+    <div className="mt-3">
+      <div className={`h-2 w-full overflow-hidden rounded-full ${theme.bg}`}>
+        <div className={`h-full ${theme.fill}`} style={{ width: `${pct}%` }} />
+      </div>
+      <div className="mt-1 flex justify-between text-xs text-neutral-600">
+        <span>{pct}% capacity</span>
+        <span>{Math.max(0, (job.allocCap ?? 0) - (job.contactUnlocks ?? 0))} slots left</span>
       </div>
     </div>
-  );
+  )
 }
 
-// client bridge for join button
-function JoinShortlist(props: { jobId: string; introduced: number; cap: number }) {
-  // @ts-ignore
-  const Button = require("../JoinShortlistButton").default;
-  return <Button {...props} />;
+function Meta({ job }: { job: Job }) {
+  return (
+    <div className="grid grid-cols-3 gap-2 text-sm">
+      <div>👁️ {job.views ?? 0} views</div>
+      <div>💰 {fmtGBP(job.priceMin, job.priceMax)}</div>
+      <div>🎯 {(job.contactUnlocks ?? 0)}/{job.allocCap ?? 3} bids</div>
+    </div>
+  )
 }
 
-// client bridge for the coloured tier pill
-function TierPillClient(props: { tier: "STANDARD" | "QUICKWIN" | "PRIORITY" }) {
-  // @ts-ignore
-  const TierPill = require("../TierPill").default;
-  return <TierPill {...props} />;
+function Loading() {
+  return <div className="text-neutral-500">Loading…</div>
+}
+
+function ErrorBox({ msg }: { msg: string }) {
+  return <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{msg}</div>
+}
+
+function ClientJobInner({ id }: { id: string }) {
+  const [job, setJob] = React.useState<Job | null>(null)
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    fetch(`/api/job/${id}`, { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => {
+        if (!cancelled) setJob(d.job ?? null)
+      })
+      .catch(() => { if (!cancelled) setError('Unable to load job') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [id])
+
+  if (loading) return <Loading />
+  if (error || !job) return <ErrorBox msg={error ?? 'Job not found'} />
+
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-6">
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold">{job.title}</h1>
+        <TierBadge tier={job.tier ?? undefined} />
+      </div>
+      {job.summary && <p className="mt-2 text-neutral-700">{job.summary}</p>}
+      <div className="mt-4">
+        <Meta job={job} />
+        <TierProgress job={job} />
+      </div>
+      <div className="mt-6">
+        <a
+          href={`/trade/jobs`}
+          className="inline-flex items-center rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm hover:bg-neutral-50"
+        >
+          ← Back to jobs
+        </a>
+      </div>
+    </div>
+  )
+}
+
+function ClientJob({ id }: { id: string }) {
+  return (
+    <React.Suspense fallback={<Loading />}>
+      {/* Client wrapper */}
+      <ClientBoundary id={id} />
+    </React.Suspense>
+  )
+}
+
+function ClientBoundary({ id }: { id: string }) {
+  // Mark this subtree as client
+  return <ClientOnly id={id} />
+}
+
+function ClientOnly({ id }: { id: string }) {
+  // Little trick: inline 'use client' boundary
+  return <ClientJobInner id={id} />
 }

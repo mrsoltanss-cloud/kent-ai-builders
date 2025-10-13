@@ -16,10 +16,10 @@ function useDebounced(fn: (...a:any[]) => void, ms = 400) {
 export default function SearchBar() {
   const router = useRouter();
   const params = useSearchParams();
-  const q = params.get('q') ?? '';
+  const q = params?.get?.('q') ?? '';
 
   const apply = useCallback((val: string) => {
-    const next = new URLSearchParams(params.toString());
+    const next = new URLSearchParams(params?.toString?.() ?? "");
     const v = val.trim();
     if (v) next.set('q', v);
     else next.delete('q');

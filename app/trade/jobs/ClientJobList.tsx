@@ -31,7 +31,7 @@ export default function ClientJobList() {
   const cache = useRef(new Map<string, { ts: number; data: Job[] }>());
   const TTL = 5_000; // 5s
 
-  const qs = useMemo(() => sp.toString(), [sp]);
+  const qs = useMemo(() => sp?.toString?.() ?? "", [sp]);
 
   useEffect(() => {
     const key = qs;

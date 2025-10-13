@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -68,3 +70,19 @@
   }
 }
 @import '../styles/mobile-tweaks.css';
+/* === Polish Pack: aurora + glass === */
+@keyframes auroraShift {0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.bg-aurora {background:linear-gradient(-45deg,#0f172a,#0ea5e9,#1e293b,#60a5fa);background-size:400% 400%;animation:auroraShift 18s ease infinite;}
+.glass-card {backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.14);box-shadow:0 20px 60px rgba(2,6,23,0.35);}
+
+/* === Polish Pack: shimmer === */
+@keyframes shimmerSweep{0%{transform:translateX(-150%) skewX(-20deg)}100%{transform:translateX(150%) skewX(-20deg)}}
+.shimmer{position:relative;overflow:hidden}
+.shimmer:before{content:"";position:absolute;top:0;left:-150%;height:100%;width:50%;background:linear-gradient(120deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.35) 50%,rgba(255,255,255,0) 100%);animation:shimmerSweep 2.4s ease-in-out infinite}
+
+/* Hide empty/broken images (prevents top-left icon) */
+img[src=""], img:not([src]) { display: none !important; }
+
+/* Grain overlay */
+.grain:before{content:"";position:fixed;inset:-10%;pointer-events:none;opacity:.06;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.95' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='table' tableValues='0 1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");mix-blend-mode:soft-light;z-index:5}
+

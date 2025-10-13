@@ -1,20 +1,14 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@prisma/client';
 
-// Reuse PrismaClient across hot reloads in dev to avoid connection exhaustion
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
-
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    // log: ['query', 'error', 'warn'], // uncomment if you want SQL logs
-  })
-
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma
+declare global {
+  // eslint-disable-next-line no-var
+  var __prisma__: PrismaClient | undefined;
 }
 
-// Some code imports { db } from '@/lib/prisma'
-export const db = prisma
+export const prisma: PrismaClient = global.__prisma__ ?? new PrismaClient();
+// Alias for code that imports { db } from "@/lib/prisma"
+export const db: PrismaClient = prisma;
 
-// Some code does a default import
-export default prisma
+if (process.env.NODE_ENV !== 'production') global.__prisma__ = prisma;
+
+export default prisma;

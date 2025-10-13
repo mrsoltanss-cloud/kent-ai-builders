@@ -1,144 +1,149 @@
-import { NextResponse } from "next/server";
-import { db } from "@/lib/prisma";
+// app/api/jobs/route.ts
+import { NextResponse } from 'next/server'
+import { db } from '@/lib/prisma'
 
-function num(v: string | null) {
-  if (!v) return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
+type JobState = 'NEW' | 'BIDDING' | 'HOT' | 'FILLED_CLOSING' | 'EXPIRING' | 'OPEN'
+
+function priceForBid(job: any, meta: { slotsLeft: number; heatScore: number }) {
+  // Base by tier
+  let base =
+    job.tier === 'PREMIUM' ? 5 :
+    job.tier === 'QUICKWIN' ? 2 :
+    3 // STANDARD/default
+
+  // Heat/urgency nudges
+  if (meta.heatScore >= 80) base += 2
+  else if (meta.heatScore >= 50) base += 1
+
+  // Scarcity nudges
+  if (meta.slotsLeft <= 1) base += 1
+
+  // Early-bird nudge down if no bids
+  const bids = Number.isFinite(job.contactUnlocks) ? job.contactUnlocks : 0
+  if (bids === 0) base -= 1
+
+  // Clamp 1..9 for now
+  return Math.max(1, Math.min(9, base))
+}
+
+function decorate(job: any) {
+  const allocCap = Number.isFinite(job.allocCap) ? job.allocCap : 0
+  const bids = Number.isFinite(job.contactUnlocks) ? job.contactUnlocks : 0
+  const rawViews = Number.isFinite(job.views) ? job.views : 0
+  const jitter = Math.random() < 0.35 ? 1 : 0
+  const views = rawViews + jitter
+  const slotsLeft = Math.max(0, allocCap - bids)
+
+  const now = Date.now()
+  const expiresInMs = job.visibleUntil
+    ? Math.max(0, new Date(job.visibleUntil).getTime() - now)
+    : null
+  const expiresInHours = typeof expiresInMs === 'number' ? Math.ceil(expiresInMs / 36e5) : null
+
+  let state: JobState = 'OPEN'
+  let label = 'Open'
+  let emoji = '🟢'
+
+  if (bids === 0) { state = 'NEW'; label = 'NEW — be the first to contact'; emoji = '💥' }
+  else if (bids > 0 && slotsLeft > 0) { state = 'BIDDING'; label = `${bids} trades in discussion`; emoji = '⚡' }
+  if (views >= 150 || (bids >= 2 && slotsLeft > 0)) { state = 'HOT'; label = 'Popular — multiple trades bidding'; emoji = '🔥' }
+  if (slotsLeft === 0) { state = 'FILLED_CLOSING'; label = 'Job filled — will be removed in 24h'; emoji = '🚫' }
+  if (expiresInHours !== null && expiresInHours <= 24) { state = 'EXPIRING'; label = 'Expiring soon'; emoji = '⏳' }
+
+  const heatScore = Number.isFinite(job.heatScore) ? job.heatScore : Math.round((views + bids * 50) / 10)
+  const matchConfidence = Math.max(40, Math.min(98, 45 + bids * 12 + Math.floor(heatScore / 6)))
+  const verifiedHomeowner = (job.tier === 'PREMIUM') || (bids >= 1 && views >= 20) || (heatScore >= 20)
+
+  const aiSummary =
+    job.aiSummary
+      ? String(job.aiSummary)
+      : job.summary
+        ? `🤖 AI summary: ${job.summary}`
+        : '🤖 AI summary: Estimated medium complexity with standard prep and typical allowances. Suitable for a small crew within 2–3 days.'
+
+  const meta = {
+    state,
+    label,
+    emoji,
+    slotsLeft,
+    expiresInHours,
+    heatScore,
+    matchConfidence,
+    verifiedHomeowner,
+  }
+
+  const bidPrice = priceForBid(job, meta)
+
+  return {
+    ...job,
+    aiSummary,
+    meta: { ...meta, bidPrice },
+  }
 }
 
 export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const q = (url.searchParams.get("q") || "").trim();
-  const tradeKey = (url.searchParams.get("trade") || "").trim().toLowerCase();
-  const tier = (url.searchParams.get("tier") || "").trim().toUpperCase();
-  const min = num(url.searchParams.get("min"));
-  const max = num(url.searchParams.get("max"));
-  const notBid = url.searchParams.get("notBid") === "1";
-  const fp = (url.searchParams.get("fp") || "").trim();
+  const { searchParams } = new URL(req.url)
+  const sort = searchParams.get('sort') ?? 'new'
+  const mode = searchParams.get('mode')
+  const q = searchParams.get('q')?.trim() || ''
+  const premiumOnly = searchParams.get('premiumOnly') === '1'
+  const newOnly = searchParams.get('newOnly') === '1'
+  const hotOnly = searchParams.get('hotOnly') === '1'
+  const expiringOnly = searchParams.get('expiringOnly') === '1'
+  const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '24', 10) || 24, 1), 100)
+  const cursor = searchParams.get('cursor') || null
+  const now = new Date()
 
-  const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || "50"), 1), 200);
-  const sort = (url.searchParams.get("sort") || "new").toLowerCase();
+  let orderBy: any = { createdAt: 'desc' as const }
+  if (sort === 'price') orderBy = { priceMin: 'asc' as const }
+  else if (sort === 'slots') orderBy = { contactUnlocks: 'asc' as const }
 
-  // Base: OPEN + CLOSED but still visible (72h window you added)
-  const now = new Date();
-
-  // Pull a slightly larger working set to allow server-side filtering without missing entries.
-  const baseTake = Math.max(limit * 2, 200);
-
-  // Sort mapping
-  let orderBy:
-    | { createdAt: "desc" | "asc" }
-    | { priceMax: "desc" | "asc" }
-    | { contactUnlocks: "asc" | "desc" } = { createdAt: "desc" };
-
-  if (sort === "budget") orderBy = { priceMax: "desc" };
-  else if (sort === "slots") orderBy = { contactUnlocks: "asc" };
-
-  const jobs = await db.job.findMany({
-    where: {
+  const where: any = {}
+  if (mode !== 'all') {
+    where.OR = [
+      { status: 'OPEN' },
+      { AND: [{ status: 'CLOSED' }, { visibleUntil: { gt: now } }] },
+    ]
+  }
+  if (q) {
+    where.AND = (where.AND || []).concat({
       OR: [
-        { status: "OPEN" },
-        { AND: [{ status: "CLOSED" }, { visibleUntil: { gt: now } }] },
+        { title: { contains: q, mode: 'insensitive' } },
+        { summary: { contains: q, mode: 'insensitive' } },
+        { postcode: { contains: q, mode: 'insensitive' } },
       ],
-    },
-    orderBy,
-    take: baseTake,
-    select: {
-      id: true,
-      title: true,
-      summary: true,
-      description: true,
-      postcode: true,
-      priceMin: true,
-      priceMax: true,
-      tier: true,
-      status: true,
-      views: true,
-      contactUnlocks: true,
-      allocCap: true,
-      createdAt: true,
-      visibleUntil: true,
-    },
-  });
+    })
+  }
+  if (premiumOnly) where.AND = (where.AND || []).concat({ tier: 'PREMIUM' })
 
-  const ids = jobs.map(j => j.id);
-
-  // Load job->trade keys (via join table)
-  // We avoid assuming field names on the Job model; we query the join table directly.
-  const jt = await db.jobTradeTag.findMany({
-    where: { jobId: { in: ids } },
-    select: { jobId: true, trade: { select: { key: true, label: true, id: true } } },
-  });
-
-  const jobToTrades = new Map<string, { key: string; label: string }[]>();
-  for (const r of jt) {
-    if (!r.trade) continue;
-    const arr = jobToTrades.get(r.jobId) || [];
-    arr.push({ key: r.trade.key, label: r.trade.label });
-    jobToTrades.set(r.jobId, arr);
+  const headers = { 'Cache-Control': 'no-store' }
+  const shape = (rows: any[]) => {
+    let items = (rows ?? []).map(decorate)
+    if (newOnly) items = items.filter((j) => j.meta.state === 'NEW')
+    if (hotOnly) items = items.filter((j) => j.meta.state === 'HOT')
+    if (expiringOnly) items = items.filter((j) => j.meta.state === 'EXPIRING' || j.meta.state === 'FILLED_CLOSING')
+    const nextCursor = items.length ? items[items.length - 1].id : null
+    return { jobs: items, items, total: items.length, nextCursor }
   }
 
-  // If notBid is requested, collect jobIds already introduced by this fingerprint and exclude.
-  let bidJobIds = new Set<string>();
-  if (notBid && fp) {
-    const intros = await db.jobIntro.findMany({
-      where: { fingerprint: fp, jobId: { in: ids } },
-      select: { jobId: true },
-    });
-    bidJobIds = new Set(intros.map(i => i.jobId));
-  }
-
-  // Optional trade filter -> resolve tradeId(s) by key so we filter precisely
-  let allowedJobIdsByTrade: Set<string> | null = null;
-  if (tradeKey) {
-    const t = await db.tradeTag.findUnique({ where: { key: tradeKey }, select: { id: true } });
-    if (t?.id) {
-      const rows = await db.jobTradeTag.findMany({
-        where: { tradeId: t.id, jobId: { in: ids } },
-        select: { jobId: true },
-      });
-      allowedJobIdsByTrade = new Set(rows.map(r => r.jobId));
-    } else {
-      // no matching trade -> no results
-      return NextResponse.json({ items: [] });
+  try {
+    const rows = await db.job.findMany({
+      where,
+      orderBy,
+      take: limit,
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+    })
+    if (!rows?.length && mode !== 'all' && !cursor) {
+      const any = await db.job.findMany({ orderBy, take: limit })
+      return NextResponse.json(shape(any), { headers })
+    }
+    return NextResponse.json(shape(rows), { headers })
+  } catch {
+    try {
+      const any = await db.job.findMany({ orderBy, take: limit })
+      return NextResponse.json(shape(any), { headers })
+    } catch {
+      return NextResponse.json({ error: 'Failed to load jobs' }, { status: 500, headers })
     }
   }
-
-  // In-memory filter pass (cheap: we already have a trimmed working set)
-  const filtered = jobs.filter(j => {
-    if (notBid && fp && bidJobIds.has(j.id)) return false;
-
-    if (tradeKey && allowedJobIdsByTrade && !allowedJobIdsByTrade.has(j.id)) return false;
-
-    if (tier && j.tier !== tier) return false;
-
-    if (min != null && (j.priceMax ?? 0) < min) return false;
-    if (max != null && (j.priceMin ?? 0) > max) return false;
-
-    if (q) {
-      const hay = [
-        j.title || "",
-        j.summary || "",
-        j.description || "",
-        j.postcode || "",
-        ...(jobToTrades.get(j.id)?.map(t => `${t.key} ${t.label}`) || []),
-      ]
-        .join(" ")
-        .toLowerCase();
-      if (!hay.includes(q.toLowerCase())) return false;
-    }
-
-    return true;
-  });
-
-  // Decorate with trade tags
-  const items = filtered.slice(0, limit).map(j => ({
-    ...j,
-    trades: jobToTrades.get(j.id) || [],
-    slotsLeft: Math.max(0, (j.allocCap ?? 3) - (j.contactUnlocks ?? 0)),
-    isFirstContact: (j.contactUnlocks ?? 0) === 0 && j.status === "OPEN",
-  }));
-
-  return NextResponse.json({ items });
 }

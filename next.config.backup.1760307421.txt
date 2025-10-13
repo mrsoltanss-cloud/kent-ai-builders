@@ -1,0 +1,8 @@
+import path from 'path';
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  eslint: { ignoreDuringBuilds: true },
+  // Ensure output file tracing stays within this package even if other lockfiles exist higher up
+  outputFileTracingRoot: path.join(process.cwd()),
+};
+export default nextConfig;

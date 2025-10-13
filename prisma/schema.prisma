@@ -7,66 +7,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id                               String     @id @default(cuid())
-  email                            String     @unique
-  name                             String?
-  role                             Role       @default(USER)
-  isBlocked                        Boolean    @default(false)
-  blockedAt                        DateTime?
-  blockedReason                    String?
-  createdAt                        DateTime   @default(now())
-  updatedAt                        DateTime   @updatedAt
-  passwordHash                     String?
-  password                         String?
-  AuditLog_AuditLog_actorIdToUser  AuditLog[] @relation("AuditLog_actorIdToUser")
-  AuditLog_AuditLog_targetIdToUser AuditLog[] @relation("AuditLog_targetIdToUser")
-  leads                            Lead[]
-}
-
-model Lead {
-  id          String     @id @default(cuid())
-  userId      String
-  service     String
-  scope       String?
-  rooms       Int?
-  sqm         Int?
-  propertyAge Int?
-  urgency     Urgency
-  budget      Int?
-  timeline    String?
-  notes       String?
-  status      LeadStatus @default(PENDING)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  description String?
-  details     Json?
-  photos      Json?
-  user        User       @relation(fields: [userId], references: [id])
-}
-
-model AuditLog {
-  id                           String   @id
-  actorId                      String?
-  action                       String
-  targetId                     String?
-  meta                         Json?
-  createdAt                    DateTime @default(now())
-  leadId                       String?
-  User_AuditLog_actorIdToUser  User?    @relation("AuditLog_actorIdToUser", fields: [actorId], references: [id])
-  User_AuditLog_targetIdToUser User?    @relation("AuditLog_targetIdToUser", fields: [targetId], references: [id])
-
-  @@index([action])
-  @@index([actorId])
-  @@index([createdAt])
-  @@index([targetId])
-}
-
+//
+// Enums
+//
 enum LeadStatus {
+  NEW
   PENDING
-  CONTACTED
-  WON
-  LOST
+  QUOTED
+  CLOSED
 }
 
 enum Urgency {
@@ -75,83 +23,141 @@ enum Urgency {
   URGENT
 }
 
-enum Role {
-  USER
+enum UserRole {
+  BUILDER
+  CUSTOMER
   ADMIN
 }
 
-////////////////////////////////////////////////////////////
-// Marketplace module for /trade/jobs (appended by setup) //
-////////////////////////////////////////////////////////////
-
-enum JobStatus {
-  OPEN
-  PAUSED
-  CLOSED
+enum ProfileStatus {
+  DRAFT
+  APPROVED
 }
 
-enum JobTier {
-  STANDARD
-  QUICKWIN
-  PRIORITY
+//
+// Core Models (existing + indexes)
+//
+model User {
+  id            String          @id @default(cuid())
+  name          String?
+  email         String?         @unique
+  image         String?
+  role          UserRole        @default(BUILDER)
+  leads         Lead[]
+  profile       BuilderProfile?
+  createdAt     DateTime        @default(now())
+  PortfolioItem PortfolioItem[]
+}
+
+model Lead {
+  id          String     @id @default(cuid())
+  service     String
+  scope       String?
+  rooms       Int?
+  sqm         Int?
+  urgency     Urgency
+  budget      String?
+  timeline    String?
+  contact     String
+  aiQuote     Json?
+  status      LeadStatus @default(PENDING)
+  userId      String?
+  user        User?      @relation(fields: [userId], references: [id])
+  attachments Json?
+  createdAt   DateTime   @default(now())
+
+  @@index([status])
+  @@index([createdAt])
 }
 
 model Job {
-  /// ---- AI title cache (hybrid) ----
-  aiTitle      String?
-  aiTitleAt    DateTime?
-  aiTitleModel String?
-  aiTitleHash  String?
-
-  id             String    @id @default(cuid())
+  id             String    @id @default(uuid())
   title          String
   summary        String?
-  description    String?
-  postcode       String
   priceMin       Int?
   priceMax       Int?
-  tier           JobTier   @default(STANDARD)
-  status         JobStatus @default(OPEN)
-  views          Int       @default(0)
-  contactUnlocks Int       @default(0)
-  allocCap       Int       @default(3)
-  aiSeeded       Boolean   @default(false)
-  filledAt       DateTime?
+  tier           String?
+  status         String?
+  views          Int?      @default(0)
+  allocCap       Int?      @default(3)
+  contactUnlocks Int?      @default(0)
+  aiSeeded       Boolean?  @default(false)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+  visibleUntil   DateTime?
 
-  trades       JobTradeTag[]
-  intros       JobIntro[]
-  visibleUntil DateTime?
-
-  @@index([status, visibleUntil])
+  @@index([visibleUntil])
+  @@index([createdAt])
 }
 
-model TradeTag {
-  id    String        @id @default(cuid())
-  key   String        @unique
-  label String
-  jobs  JobTradeTag[]
+//
+// New: Builder Profile (powers onboarding + public page)
+//
+model BuilderProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  // Brand & Identity
+  company         String
+  phone           String
+  yearsExperience Int?
+  logoUrl         String?
+  bio             String? // 160–240 chars suggested
+  slug            String  @unique
+
+  // Services & Coverage
+  tradeTypes   String[] // e.g., ["General Builder","Tiling"]
+  services     String[] // Detailed service list
+  minJobValue  Int? // in GBP
+  maxJobValue  Int? // in GBP
+  availability String? // "Immediate" | "2–4 weeks" | etc.
+  postcodeBase String
+  radiusKm     Int? // 5–50
+  areas        String[] // e.g., ["Canterbury","Maidstone"]
+
+  // Portfolio & Trust
+  portfolio      Json? // [{title, category, budgetBand, photos[], beforeAfterPairs[], description}]
+  certifications String[] // e.g., ["NICEIC","Gas Safe"]
+  hasInsurance   Boolean  @default(false)
+  insuranceCover String? // e.g., "£1m", "£5m"
+
+  // Notifications & Preferences
+  notifications Json? // { email: bool, whatsapp: bool, quietHours: {start,end} }
+
+  // Lifecycle
+  profileStatus ProfileStatus @default(DRAFT)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([profileStatus])
+  @@index([postcodeBase])
 }
 
-model JobTradeTag {
-  jobId   String
-  tradeId String
-  job     Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  trade   TradeTag @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+// ===== Portfolio v0 =====
+model PortfolioItem {
+  id          String           @id @default(cuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id])
+  title       String
+  description String?
+  coverUrl    String?
+  position    Int              @default(0)
+  images      PortfolioImage[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
-  @@id([jobId, tradeId])
+  @@index([userId, position])
 }
 
-model JobIntro {
-  id          String   @id @default(cuid())
-  jobId       String
-  builderId   String?
-  fingerprint String
-  ip          String?
-  userAgent   String?
-  createdAt   DateTime @default(now())
-  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+model PortfolioImage {
+  id        String        @id @default(cuid())
+  itemId    String
+  item      PortfolioItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  url       String
+  caption   String?
+  position  Int           @default(0)
+  createdAt DateTime      @default(now())
 
-  @@unique([jobId, fingerprint])
+  @@index([itemId, position])
 }

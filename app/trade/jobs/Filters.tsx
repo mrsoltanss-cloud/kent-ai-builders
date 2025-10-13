@@ -15,22 +15,22 @@ export default function Filters() {
   const sp = useSearchParams();
   const router = useRouter();
 
-  const [q, setQ] = useState(sp.get("q") ?? "");
-  const [trade, setTrade] = useState(sp.get("trade") ?? "");
-  const [tier, setTier] = useState(sp.get("tier") ?? "");
-  const [onlyNew, setOnlyNew] = useState(sp.get("new") === "1");
-  const [min, setMin] = useState(sp.get("min") ?? "");
-  const [max, setMax] = useState(sp.get("max") ?? "");
-  const [sort, setSort] = useState(sp.get("sort") ?? "new"); // new | budget | slots
+  const [q, setQ] = useState(sp?.get?.("q") ?? "");
+  const [trade, setTrade] = useState(sp?.get?.("trade") ?? "");
+  const [tier, setTier] = useState(sp?.get?.("tier") ?? "");
+  const [onlyNew, setOnlyNew] = useState(sp?.get?.("new") === "1");
+  const [min, setMin] = useState(sp?.get?.("min") ?? "");
+  const [max, setMax] = useState(sp?.get?.("max") ?? "");
+  const [sort, setSort] = useState(sp?.get?.("sort") ?? "new"); // new | budget | slots
 
   useEffect(() => {
-    setQ(sp.get("q") ?? "");
-    setTrade(sp.get("trade") ?? "");
-    setTier(sp.get("tier") ?? "");
-    setOnlyNew(sp.get("new") === "1");
-    setMin(sp.get("min") ?? "");
-    setMax(sp.get("max") ?? "");
-    setSort(sp.get("sort") ?? "new");
+    setQ(sp?.get?.("q") ?? "");
+    setTrade(sp?.get?.("trade") ?? "");
+    setTier(sp?.get?.("tier") ?? "");
+    setOnlyNew(sp?.get?.("new") === "1");
+    setMin(sp?.get?.("min") ?? "");
+    setMax(sp?.get?.("max") ?? "");
+    setSort(sp?.get?.("sort") ?? "new");
   }, [sp]);
 
   const push = () => {

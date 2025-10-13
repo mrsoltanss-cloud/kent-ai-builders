@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+//
+// Enums
+//
+enum LeadStatus {
+  NEW
+  PENDING
+  QUOTED
+  CLOSED
+}
+
+enum Urgency {
+  FLEXIBLE
+  SOON
+  URGENT
+}
+
+enum UserRole {
+  BUILDER
+  CUSTOMER
+  ADMIN
+}
+
+enum ProfileStatus {
+  DRAFT
+  APPROVED
+}
+
+//
+// Core Models (existing + indexes)
+//
+model User {
+  id        String          @id @default(cuid())
+  name      String?
+  email     String?         @unique
+  image     String?
+  role      UserRole        @default(BUILDER)
+  leads     Lead[]
+  profile   BuilderProfile?
+  createdAt DateTime        @default(now())
+}
+
+model Lead {
+  id          String      @id @default(cuid())
+  service     String
+  scope       String?
+  rooms       Int?
+  sqm         Int?
+  urgency     Urgency
+  budget      String?
+  timeline    String?
+  contact     String
+  aiQuote     Json?
+  status      LeadStatus  @default(PENDING)
+  userId      String?
+  user        User?       @relation(fields: [userId], references: [id])
+  attachments Json?
+  createdAt   DateTime    @default(now())
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Job {
+  id              String   @id @default(uuid())
+  title           String
+  summary         String?
+  priceMin        Int?
+  priceMax        Int?
+  tier            String?
+  status          String?
+  views           Int?     @default(0)
+  allocCap        Int?     @default(3)
+  contactUnlocks  Int?     @default(0)
+  aiSeeded        Boolean? @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  visibleUntil    DateTime?
+
+  @@index([visibleUntil])
+  @@index([createdAt])
+}
+
+//
+// New: Builder Profile (powers onboarding + public page)
+//
+model BuilderProfile {
+  id               String         @id @default(cuid())
+  userId           String         @unique
+  user             User           @relation(fields: [userId], references: [id])
+
+  // Brand & Identity
+  company          String
+  phone            String
+  yearsExperience  Int?
+  logoUrl          String?
+  bio              String?        // 160–240 chars suggested
+  slug             String         @unique
+
+  // Services & Coverage
+  tradeTypes       String[]       // e.g., ["General Builder","Tiling"]
+  services         String[]       // Detailed service list
+  minJobValue      Int?           // in GBP
+  maxJobValue      Int?           // in GBP
+  availability     String?        // "Immediate" | "2–4 weeks" | etc.
+  postcodeBase     String
+  radiusKm         Int?           // 5–50
+  areas            String[]       // e.g., ["Canterbury","Maidstone"]
+
+  // Portfolio & Trust
+  portfolio        Json?          // [{title, category, budgetBand, photos[], beforeAfterPairs[], description}]
+  certifications   String[]       // e.g., ["NICEIC","Gas Safe"]
+  hasInsurance     Boolean        @default(false)
+  insuranceCover   String?        // e.g., "£1m", "£5m"
+
+  // Notifications & Preferences
+  notifications    Json?          // { email: bool, whatsapp: bool, quietHours: {start,end} }
+
+  // Lifecycle
+  profileStatus    ProfileStatus  @default(DRAFT)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([profileStatus])
+  @@index([postcodeBase])
+}

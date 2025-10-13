@@ -1,3 +1,14 @@
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_enum e
+    JOIN pg_type t ON e.enumtypid = t.oid
+    WHERE t.typname = 'LeadStatus' AND e.enumlabel = 'NEW'
+  ) THEN
+    ALTER TYPE "LeadStatus" ADD VALUE 'NEW';
+  END IF;
+END $$;
 /*
   Warnings:
 
@@ -13,7 +24,6 @@
   - You are about to drop the column `passwordHash` on the `User` table. All the data in the column will be lost.
   - You are about to drop the column `role` on the `User` table. All the data in the column will be lost.
   - You are about to drop the `AuditLog` table. If the table is not empty, all the data it contains will be lost.
-  - Added the required column `postcode` to the `Lead` table without a default value. This is not possible if the table is not empty.
 
 */
 -- CreateEnum
@@ -30,7 +40,6 @@ CREATE TYPE "JobTier" AS ENUM ('STANDARD', 'QUICKWIN', 'PRIORITY');
 -- the enum.
 
 
-ALTER TYPE "LeadStatus" ADD VALUE 'NEW';
 ALTER TYPE "LeadStatus" ADD VALUE 'QUALIFIED';
 ALTER TYPE "LeadStatus" ADD VALUE 'CLOSED';
 
@@ -69,7 +78,6 @@ ADD COLUMN     "consent" BOOLEAN NOT NULL DEFAULT false,
 ADD COLUMN     "contactEmail" TEXT,
 ADD COLUMN     "contactName" TEXT,
 ADD COLUMN     "contactPhone" TEXT,
-ADD COLUMN     "postcode" TEXT NOT NULL,
 ALTER COLUMN "userId" DROP NOT NULL,
 ALTER COLUMN "status" SET DEFAULT 'NEW';
 
@@ -130,7 +138,6 @@ CREATE TABLE "Job" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "summary" TEXT,
-    "postcode" TEXT NOT NULL,
     "priceMin" INTEGER,
     "priceMax" INTEGER,
     "tier" "JobTier" NOT NULL DEFAULT 'STANDARD',

@@ -5,10 +5,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 export default function HideJoinedToggle() {
   const router = useRouter();
   const params = useSearchParams();
-  const checked = params.get('hideJoined') === '1';
+  const checked = params?.get?.('hideJoined') === '1';
 
   function onChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const next = new URLSearchParams(params.toString());
+    const next = new URLSearchParams(params?.toString?.() ?? "");
     if (e.currentTarget.checked) next.set('hideJoined', '1');
     else next.delete('hideJoined');
     router.push(`/trade/jobs?${next.toString()}`);

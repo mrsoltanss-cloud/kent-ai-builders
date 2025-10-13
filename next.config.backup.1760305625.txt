@@ -1,0 +1,13 @@
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
+  // Optional: silences the “workspace root” warning by pointing to this app
+  outputFileTracingRoot: __dirname,
+}
+
+export default nextConfig

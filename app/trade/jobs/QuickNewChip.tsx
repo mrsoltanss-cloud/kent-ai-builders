@@ -3,7 +3,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 export default function QuickNewChip() {
   const sp = useSearchParams();
   const router = useRouter();
-  const active = sp.get("new") === "1";
+  const active = sp?.get?.("new") === "1";
 
   const toggle = () => {
     const u = new URL(window.location.href);

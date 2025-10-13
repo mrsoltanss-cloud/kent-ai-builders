@@ -25,13 +25,13 @@ export default function FiltersBar() {
   const sp = useSearchParams();
   const fp = useFingerprint();
 
-  const [q, setQ] = useState(sp.get('q') || '');
-  const [trade, setTrade] = useState(sp.get('trade') || '');
-  const [tier, setTier] = useState(sp.get('tier') || '');
-  const [min, setMin] = useState(sp.get('min') || '');
-  const [max, setMax] = useState(sp.get('max') || '');
-  const [sort, setSort] = useState(sp.get('sort') || 'new');
-  const [notBid, setNotBid] = useState(sp.get('notBid') === '1');
+  const [q, setQ] = useState(sp?.get?.('q') || '');
+  const [trade, setTrade] = useState(sp?.get?.('trade') || '');
+  const [tier, setTier] = useState(sp?.get?.('tier') || '');
+  const [min, setMin] = useState(sp?.get?.('min') || '');
+  const [max, setMax] = useState(sp?.get?.('max') || '');
+  const [sort, setSort] = useState(sp?.get?.('sort') || 'new');
+  const [notBid, setNotBid] = useState(sp?.get?.('notBid') === '1');
 
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loadingTrades, setLoadingTrades] = useState(false);
@@ -61,7 +61,7 @@ export default function FiltersBar() {
   }, [q]);
 
   function pushQuery(extra?: Record<string,string|undefined>) {
-    const next = new URLSearchParams(Array.from(sp.entries()));
+    const next = new URLSearchParams(Array.from(sp?.entries?.() ?? []));
 
     const setOrDel = (k: string, v?: string) => {
       if (v && v.trim() !== '') next.set(k, v.trim());
@@ -168,7 +168,7 @@ export default function FiltersBar() {
             setMax('');
             setSort('new');
             setNotBid(false);
-            router.replace(pathname);
+            router.replace(pathname || "/trade/jobs");
           }}
         >
           Reset

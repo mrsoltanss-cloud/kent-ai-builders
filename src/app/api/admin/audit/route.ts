@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
           OR: [
             { action: { contains: q, mode: "insensitive" } },
             // naive meta search via JSON string cast
-            // @ts-expect-error: Prisma doesn't type JSON contains string; most providers accept it.
+            // @ts-ignore: Prisma doesn't type JSON contains string; most providers accept it.
             { meta: { contains: q } },
           ],
         }
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
   if (csv) {
     const rows = [
       ["id", "ts", "action", "actorEmail", "targetId", "leadId", "meta"],
-      ...items.map(a => [
+      ...items.map((a: any) => [
         a.id,
         a.ts.toISOString(),
         a.action,
@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
         JSON.stringify(a.meta ?? {}),
       ]),
     ]
-    const body = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n")
+    const body = rows.map((r: any[]) => r.map((v: any) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n")
     return new Response(body, {
       headers: {
         "content-type": "text/csv",

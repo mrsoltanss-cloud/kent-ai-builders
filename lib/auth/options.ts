@@ -1,7 +1,9 @@
 /**
- * Shim for legacy imports that expect ./lib/auth/options.ts
- * We now centralize in src/lib/authOptions.ts
+ * Temporary minimal NextAuth options to satisfy imports during stabilization.
+ * Replace with your real providers/callbacks later.
  */
-export { authOptions } from "@/lib/authOptions";
-import { authOptions as _authOptions } from "@/lib/authOptions";
-export default _authOptions;
+export const authOptions: any = {
+  session: { strategy: "jwt" },
+  providers: [],
+};
+export default authOptions;
