@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -18,26 +18,41 @@ import {
 
 export default function SigninClient() {
   const sp = useSearchParams();
-  const error = sp.get("error");
+  const router = useRouter();
+  const roleError = sp.get("error") === "wrong_role" ? "This area is for builders only. Please use Trade sign in." : null;
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(roleError);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    try {
-      await signIn("credentials", {
-        redirect: true,
-        email,
-        password,
-        // 👇 always land in the builder area; /trade/profile will route to /trade/leads or onboarding
-        callbackUrl: "/trade/profile",
-      });
-    } finally {
-      setLoading(false);
+    setErrorMsg(null);
+
+    // IMPORTANT: redirect: false → we control navigation (avoids /api/auth/signin screen)
+    const res = await signIn("credentials", {
+      redirect: false,
+      email,
+      password,
+    });
+
+    setLoading(false);
+
+    if (res?.ok) {
+      // Always land in the builder hub router (it will route to leads/onboarding)
+      router.push("/trade/profile");
+      return;
     }
+
+    // Show a clear inline error
+    setErrorMsg(
+      res?.error === "CredentialsSignin"
+        ? "Incorrect email or password."
+        : res?.error || "Sign-in failed. Please try again."
+    );
   };
 
   return (
@@ -122,11 +137,9 @@ export default function SigninClient() {
                 </div>
               </div>
 
-              {error && (
+              {errorMsg && (
                 <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                  {error === "wrong_role"
-                    ? "This area is for builders only. Please use Trade sign in."
-                    : "Sign-in failed. Double-check your email and password."}
+                  {errorMsg}
                 </div>
               )}
 
@@ -218,7 +231,7 @@ function Spinner() {
   return (
     <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+      <path className="opacity-75" d="M4 12a 8 8 0 0 1 8-8" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
     </svg>
   );
 }
