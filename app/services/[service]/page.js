@@ -17,7 +17,7 @@ export default function ServicePage({ params }) {
   };
 
   return (
-    <main className="min-h-screen bg-white text-gray-900">
+    <main className="min-h-[100dvh] bg-white text-gray-900">
       {/* HERO */}
       <section className="relative bg-gray-50 border-b">
         <div className="mx-auto max-w-6xl px-6 py-14 grid md:grid-cols-2 gap-8 items-center">

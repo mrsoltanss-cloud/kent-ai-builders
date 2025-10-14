@@ -64,7 +64,7 @@ export async function POST(req: Request) {
     // IMPORTANT: set BOTH createdAt and updatedAt
     const inserted = await prisma.$queryRawUnsafe<any>(
       `
-      INSERT INTO "User" (id, email, name, password, role, "isBlocked", "createdAt", "updatedAt")
+      INSERT INTO "User" (id, email, name, "passwordHash", role, "isBlocked", "createdAt", "updatedAt")
       VALUES ($1, $2, $3, $4, '${chosen}'::"${enumType}", false, NOW(), NOW())
       RETURNING id, email, role
       `,

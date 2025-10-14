@@ -1,0 +1,83 @@
+import Link from "next/link"
+
+export default function OnboardingCover() {
+  return (
+    <main className="min-h-[92vh] w-full bg-[radial-gradient(1200px_600px_at_70%_-10%,#0ea5e9_0%,transparent_70%),radial-gradient(900px_500px_at_10%_20%,#22c55e22_0%,transparent_75%)] 
+                      relative overflow-hidden px-4 py-12 md:py-16">
+      {/* soft grain */}
+      <div className="pointer-events-none absolute inset-0 opacity-[0.06] mix-blend-soft-light"
+           style={{backgroundImage:
+             "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.95' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='table' tableValues='0 1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E\")"}}/>
+
+      <section className="mx-auto max-w-5xl">
+        {/* Card */}
+        <div className="relative rounded-3xl border border-white/10 bg-white/5 backdrop-blur-md shadow-[0_20px_80px_-20px_rgba(0,0,0,0.6)]">
+          {/* gold rim */}
+          <div className="pointer-events-none absolute inset-0 rounded-3xl ring-1 ring-inset ring-amber-300/40" />
+
+          <div className="px-6 py-10 sm:px-10 sm:py-14">
+            {/* Top activity ribbon */}
+            <div className="mb-6 flex items-center gap-3 text-xs text-cyan-200/80">
+              <span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+              <span>🔥 7 hot leads posted near ME14 today</span>
+            </div>
+
+            {/* Hero */}
+            <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
+              Become a Verified Trade Partner.
+            </h1>
+            <p className="mt-4 max-w-2xl text-slate-200/90">
+              Win better projects, quote faster, build trust. AI does the heavy lifting.
+            </p>
+
+            {/* CTA row */}
+            <div className="mt-8 flex flex-col sm:flex-row sm:items-center gap-4">
+              <Link
+                href="/trade/onboarding/account"
+                className="inline-flex items-center justify-center rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white font-semibold h-12 px-6 transition-colors"
+              >
+                Start / Continue onboarding
+              </Link>
+              <span className="text-sm text-slate-300/90">
+                ~6–8 minutes · Pause anytime · Your details stay private
+              </span>
+            </div>
+
+            {/* Value chips */}
+            <div className="mt-6 flex flex-wrap gap-2 text-sm text-slate-100/90">
+              {["AI job matching","Instant estimates","Smart reputation","Verified profile"].map((t)=>(
+                <span key={t} className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5">{t}</span>
+              ))}
+            </div>
+
+            {/* Step tiles */}
+            <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[
+                {t:"Create account", d:"Secure login for you & your team"},
+                {t:"Company details", d:"Show homeowners who you are"},
+                {t:"Trades & services", d:"Only match jobs you actually want"},
+                {t:"Coverage area", d:"Keep it local — your postcodes"},
+                {t:"Portfolio", d:"Upload 3 photos → AI captions instantly"},
+                {t:"Trust & verification", d:"Badges that boost your win rate"},
+              ].map((it)=>(
+                <div key={it.t} className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/7 transition-colors">
+                  <div className="text-slate-50 font-semibold">{it.t}</div>
+                  <div className="text-slate-300/90 text-sm mt-1">{it.d}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Trust strip */}
+            <div className="mt-8 flex flex-wrap items-center gap-4 text-xs text-slate-300/90">
+              <span>Bank-grade security</span>
+              <span>•</span>
+              <span>GDPR friendly</span>
+              <span>•</span>
+              <span>Email verified</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  )
+}

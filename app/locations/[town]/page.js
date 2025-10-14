@@ -12,7 +12,7 @@ export default function LocationPage() {
 
   if (!location) {
     return (
-      <main className="min-h-screen flex items-center justify-center text-center">
+      <main className="min-h-[100dvh] flex items-center justify-center text-center">
         <div>
           <h1 className="text-3xl font-bold text-red-500">Location Not Found</h1>
           <p className="mt-2">We don’t yet cover this area.</p>
@@ -25,7 +25,7 @@ export default function LocationPage() {
   }
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-[100dvh] bg-white">
       {/* HERO */}
       <section className="relative">
         <div className="mx-auto max-w-6xl px-6 py-12 text-center">

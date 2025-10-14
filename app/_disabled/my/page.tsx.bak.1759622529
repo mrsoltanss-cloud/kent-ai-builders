@@ -12,7 +12,7 @@ export default function MyPage(){
   const [tab,setTab] = React.useState<'overview'|'files'|'activity'|'settings'>('overview');
 
   return (
-    <main className="min-h-screen bg-neutral-50 text-neutral-900">
+    <main className="min-h-[100dvh] bg-neutral-50 text-neutral-900">
       <TopBar tab={tab} onTab={setTab}/>
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-6 md:py-10">
         <HeroSummary />

@@ -88,7 +88,7 @@ export default function QuoteClient() {
   }
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-[100dvh] bg-white">
       <section className="mx-auto max-w-3xl px-6 py-10">
         <h1 className="text-3xl md:text-4xl font-bold">Instant Estimate</h1>
         <p className="text-gray-600 mt-2">Get a fast price range. Final quote confirmed after a free site survey.</p>

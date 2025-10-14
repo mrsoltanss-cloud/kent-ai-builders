@@ -1,6 +1,6 @@
 export default function Page(){
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-[100dvh] bg-slate-50">
       <div className="max-w-6xl mx-auto p-6 md:p-10 space-y-6">
         <header className="rounded-2xl p-6 bg-white shadow flex items-center justify-between">
           <div>

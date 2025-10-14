@@ -161,3 +161,57 @@ model PortfolioImage {
 
   @@index([itemId, position])
 }
+
+enum BuilderStatus { DRAFT PENDING_REVIEW ACTIVE REJECTED }
+
+model BuilderProfile {
+  id           String        @id @default(cuid())
+  userId       String        @unique
+  user         User          @relation(fields: [userId], references: [id])
+  companyName  String?
+  phone        String?
+  website      String?
+  bio          String?
+  trades       String[]      @default([])
+  postcode     String?
+  radiusMiles  Int?
+  lat          Float?
+  lng          Float?
+  completeness Int            @default(0)
+  status       BuilderStatus  @default(DRAFT)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  portfolio    PortfolioItem[]
+  documents    VerificationDocument[]
+}
+
+model PortfolioItem {
+  id         String   @id @default(cuid())
+  builderId  String
+  builder    BuilderProfile @relation(fields: [builderId], references: [id])
+  imageUrl   String
+  caption    String?
+  order      Int       @default(0)
+  visibility String    @default("PRIVATE") // PRIVATE | PUBLIC
+  createdAt  DateTime  @default(now())
+}
+
+enum VerificationType { INSURANCE ID CERT }
+enum VerificationStatus { UPLOADED UNDER_REVIEW APPROVED REJECTED }
+
+model VerificationDocument {
+  id         String             @id @default(cuid())
+  builderId  String
+  builder    BuilderProfile     @relation(fields: [builderId], references: [id])
+  type       VerificationType
+  fileUrl    String
+  filename   String?
+  mimeType   String?
+  size       Int?
+  status     VerificationStatus @default(UPLOADED)
+  reviewedBy String?
+  reviewedAt DateTime?
+  reason     String?
+  createdAt  DateTime           @default(now())
+}

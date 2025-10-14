@@ -14,7 +14,7 @@ export default function SignOutPage() {
     }).catch(() => {});
   }, []);
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-emerald-50/50 to-emerald-100/40">
+    <div className="min-h-[100dvh] bg-gradient-to-b from-white via-emerald-50/50 to-emerald-100/40">
       <div className="mx-auto max-w-3xl px-4 py-14">
         <div className="rounded-3xl border border-emerald-200/60 bg-white p-8 sm:p-12 shadow-sm">
           <h1 className="text-3xl font-semibold text-zinc-900">All set — you’re signed out.</h1>

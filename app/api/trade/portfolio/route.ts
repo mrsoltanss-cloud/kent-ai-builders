@@ -1,36 +1,23 @@
-import { NextResponse } from "next/server"
-import prisma from "@/lib/prisma"
-import { getCurrentUserId } from "./_auth"
-
-export async function GET(req: Request) {
-  const userId = await getCurrentUserId(req)
-  if (!userId) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 })
-
-  const items = await prisma.portfolioItem.findMany({
-    where: { userId },
-    orderBy: [{ position: "asc" }, { createdAt: "desc" }],
-    include: { images: { orderBy: [{ position: "asc" }] } },
-  })
-  return NextResponse.json({ ok: true, items })
-}
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/options";
+import prisma from "@/lib/prisma";
 
 export async function POST(req: Request) {
-  const userId = await getCurrentUserId(req)
-  if (!userId) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 })
+  const session = await getServerSession(authOptions as any);
+  if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+  if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  const body = await req.json().catch(() => ({}))
-  const title = String(body.title ?? "").trim()
-  if (!title) return NextResponse.json({ ok: false, error: "Title required" }, { status: 400 })
+  const { imageUrl, caption } = await req.json();
+  const builder = await prisma.builderProfile.findUnique({ where: { userId: user.id }});
+  if (!builder) return NextResponse.json({ error: "No builder profile" }, { status: 400 });
 
-  const count = await prisma.portfolioItem.count({ where: { userId } })
+  const order = (await prisma.portfolioItem.count({ where: { builderId: builder.id } })) || 0;
+
   const item = await prisma.portfolioItem.create({
-    data: {
-      userId,
-      title,
-      description: body.description ?? null,
-      coverUrl: body.coverUrl ?? null,
-      position: count, // append
-    },
-  })
-  return NextResponse.json({ ok: true, item })
+    data: { builderId: builder.id, imageUrl, caption, order, visibility: "PRIVATE" },
+  });
+
+  return NextResponse.json({ ok: true, item });
 }

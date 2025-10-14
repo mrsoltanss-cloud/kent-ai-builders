@@ -2,7 +2,7 @@ type Props = { params: Promise<{ slug: string }> }
 export default async function Page({ params }: Props){
   const { slug } = await params
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-[100dvh] bg-white">
       <section className="bg-gradient-to-r from-slate-900 to-slate-700 text-white">
         <div className="max-w-5xl mx-auto p-10">
           <h1 className="text-3xl font-bold">{slug.replace(/-/g,' ')}</h1>

@@ -31,3 +31,10 @@ function SideNav({ items, active = '' }: Props) {
 }
 export { SideNav }
 export default SideNav
+
+{/* --- Auto-added Leads/My Bids link --- */}
+<li>
+  <a href="/trade/leads/my" className="block px-3 py-2 rounded-lg hover:bg-white/5 text-slate-200">
+    My bids
+  </a>
+</li>

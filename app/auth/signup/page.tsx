@@ -57,6 +57,7 @@ router.push('/my/complete-profile');
       <div className="w-full max-w-md">
         <div className="rounded-2xl bg-white shadow-sm ring-1 ring-black/5 p-6 md:p-8">
           <h1 className="text-2xl font-bold tracking-tight">Create your account</h1>
+      <p className="text-sm text-slate-500">For homeowners · <a className="text-cyan-600" href="/trade/signup">Are you a builder?</a></p>
           <p className="mt-2 text-sm text-neutral-600">
             Save quotes, track progress, and book vetted local builders.
           </p>

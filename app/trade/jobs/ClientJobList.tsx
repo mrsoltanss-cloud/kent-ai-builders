@@ -120,7 +120,7 @@ export default function ClientJobList() {
                   <span className="px-2 py-0.5 rounded bg-gray-50">{statusLabel}</span>
                   {j.postcode && <span className="px-2 py-0.5 rounded bg-gray-50">📍 {j.postcode}</span>}
                   {(j.priceMin ?? null) !== null && (j.priceMax ?? null) !== null && (
-                    <span className="px-2 py-0.5 rounded bg-gray-50">£{(j.priceMin || 0).toLocaleString()}–£{(j.priceMax || 0).toLocaleString()}</span>
+                    <span className="px-2 py-0.5 rounded bg-gray-50">£{(j.priceMin || 0).toLocaleString("en-GB")}–£{(j.priceMax || 0).toLocaleString("en-GB")}</span>
                   )}
                   <span className="px-2 py-0.5 rounded bg-gray-50">👀 {j.views ?? 0}</span>
                 </div>

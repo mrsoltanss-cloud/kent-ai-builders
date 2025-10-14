@@ -108,7 +108,7 @@ export default function JobsListClient({ initial }: { initial: JobItem[] }) {
               <div className="flex flex-wrap gap-3 text-sm mb-3">
                 <span className="badge badge-ghost">📍 {j.postcode}</span>
                 <span className="badge badge-ghost">
-                  📄 £{j.priceMin?.toLocaleString() ?? "-"} — £{j.priceMax?.toLocaleString() ?? "-"}
+                  📄 £{j.priceMin?.toLocaleString("en-GB") ?? "-"} — £{j.priceMax?.toLocaleString("en-GB") ?? "-"}
                 </span>
                 <span className="badge badge-ghost">👀 {j.views ?? 0} views</span>
                 <span className="badge badge-ghost">
