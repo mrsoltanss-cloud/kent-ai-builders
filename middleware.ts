@@ -2,43 +2,51 @@ import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 export const config = {
-  matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
 
 export async function middleware(req: Request) {
   const url = new URL(req.url);
   const pathname = url.pathname;
+  const referer = (req.headers.get("referer") || "").toString();
 
-  // Public routes (keep onboarding & auth public)
+  // --- Trade-aware redirect: ensure signup's "Already a member? Sign in" goes to /trade/signin ---
+  // If user is navigating to homeowner /auth/signin from any trade page (or ?from=trade), redirect them.
+  if (
+    pathname === "/auth/signin" &&
+    (referer.includes("/trade/") || url.searchParams.get("from") === "trade")
+  ) {
+    return NextResponse.redirect(new URL("/trade/signin", url), 302);
+  }
+
+  // Public routes
   const isPublic =
     pathname === "/" ||
     pathname.startsWith("/auth") ||
-    pathname.startsWith("/trade/signin") ||   // trade sign-in is public
+    pathname.startsWith("/trade/signin") ||
     pathname.startsWith("/trade/signup") ||
     pathname.startsWith("/trade/onboarding") ||
     pathname.startsWith("/api/auth");
 
   if (isPublic) return NextResponse.next();
 
-  // Protected: require a session
+  // Auth check for protected routes
   const token = await getToken({ req: req as any });
-  const isAuthed = !!token;
-
-  // Trade private areas
-  const TRADE_PRIVATE = ["/trade/profile", "/trade/leads", "/trade/jobs", "/trade/watchlist"];
-  const isTradePrivate = TRADE_PRIVATE.some((p) => pathname.startsWith(p));
-
-  if (!isAuthed) {
-    // ⬅️ CHANGE: unauthenticated users going to trade areas go to /trade/signin (no callbackUrl)
+  if (!token) {
+    // For trade private areas, send to trade sign-in (no callbackUrl)
+    const TRADE_PRIVATE = ["/trade/profile", "/trade/leads", "/trade/jobs", "/trade/watchlist"];
+    const isTradePrivate = TRADE_PRIVATE.some((p) => pathname.startsWith(p));
     if (isTradePrivate) {
       return NextResponse.redirect(new URL("/trade/signin", url), 302);
     }
-    // Non-trade protected pages still go to homeowner sign-in with callback
+    // Other protected → homeowner sign-in (keeps your original behavior)
     const callbackUrl = encodeURIComponent(url.pathname + url.search);
     return NextResponse.redirect(new URL(`/auth/signin?callbackUrl=${callbackUrl}`, url), 302);
   }
 
-  // Role gate: only BUILDER/ADMIN can access trade private
+  // Role-gate trade private (optional but useful)
+  const TRADE_PRIVATE = ["/trade/profile", "/trade/leads", "/trade/jobs", "/trade/watchlist"];
+  const isTradePrivate = TRADE_PRIVATE.some((p) => pathname.startsWith(p));
   const role = (token as any)?.role || (token as any)?.user?.role;
   if (isTradePrivate && role !== "BUILDER" && role !== "ADMIN") {
     return NextResponse.redirect(new URL("/trade/signin?error=wrong_role", url), 302);
