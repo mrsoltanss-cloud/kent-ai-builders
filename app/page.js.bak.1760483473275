@@ -100,7 +100,7 @@ export default function Home() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 z-0">
           <Image
-            src="/images/placeholder-hero.svg"
+            src="/images/hero-kitchen.jpg"
             alt="Modern kitchen"
             fill
             priority
