@@ -16,16 +16,14 @@ export default function HeaderActions({ className = "" }: { className?: string }
       {authed ? (
         <MyAreaButton />
       ) : (
-        <div className="inline-flex items-center gap-2">
-  <Link
+        <Link
           href="/auth/signin"
           className="rounded-full bg-emerald-600 text-white px-4 py-1.5 hover:bg-emerald-700"
         >
           Log in
         </Link>
-  <Link href="/trade/signin" className="rounded-full bg-emerald-600 text-white px-4 py-1.5 hover:bg-emerald-700">Trade sign in</Link>
-</div>
-)}
+<Link href="/trade/signin" className="rounded-full bg-emerald-600 text-white px-4 py-1.5 hover:bg-emerald-700">Trade sign in</Link>
+      )}
     </div>
   );
 }
