@@ -21,23 +21,24 @@ export default function SigninClient() {
   const error = sp.get("error");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  async function onSubmit(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
+    setLoading(true);
     try {
       await signIn("credentials", {
         redirect: true,
         email,
         password,
-        callbackUrl: "/trade/leads", // land in the portal
+        // 👇 always land in the builder area; /trade/profile will route to /trade/leads or onboarding
+        callbackUrl: "/trade/profile",
       });
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="fixed inset-0 z-[99999] overflow-auto bg-white">
@@ -49,7 +50,12 @@ export default function SigninClient() {
       />
       <div className="relative mx-auto grid w-full max-w-6xl grid-cols-1 gap-8 px-4 py-8 md:grid-cols-2 md:py-16">
         {/* LEFT */}
-        <motion.section initial={{ y: 14, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.5 }} className="order-2 md:order-1">
+        <motion.section
+          initial={{ y: 14, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.5 }}
+          className="order-2 md:order-1"
+        >
           <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 text-[12px] shadow-sm ring-1 ring-emerald-200">
             <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
             <span className="font-medium text-emerald-700">Fast access to premium leads</span>
@@ -84,7 +90,10 @@ export default function SigninClient() {
           </ul>
 
           <div className="mt-10 flex flex-wrap items-center gap-4 text-sm">
-            <Link href="/trade/signup" className="group inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-4 py-2 font-medium text-emerald-700 shadow-sm transition hover:border-emerald-300">
+            <Link
+              href="/trade/signup"
+              className="group inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-4 py-2 font-medium text-emerald-700 shadow-sm transition hover:border-emerald-300"
+            >
               New to Brixel Trade? Create account
               <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
             </Link>
@@ -95,7 +104,12 @@ export default function SigninClient() {
         </motion.section>
 
         {/* RIGHT */}
-        <motion.section initial={{ y: 14, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.55, delay: 0.05 }} className="order-1 md:order-2">
+        <motion.section
+          initial={{ y: 14, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.55, delay: 0.05 }}
+          className="order-1 md:order-2"
+        >
           <div className="relative">
             <div className="rounded-2xl border border-emerald-100 bg-white/95 p-6 shadow-xl md:p-8">
               <div className="mb-6 flex items-center gap-2">
@@ -110,11 +124,13 @@ export default function SigninClient() {
 
               {error && (
                 <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                  {error === "wrong_role" ? "This area is for builders only. Please use Trade sign in." : "Sign-in failed. Double-check your email and password."}
+                  {error === "wrong_role"
+                    ? "This area is for builders only. Please use Trade sign in."
+                    : "Sign-in failed. Double-check your email and password."}
                 </div>
               )}
 
-              <form onSubmit={onSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="mb-1 block text-sm font-medium">Email</label>
                   <input
@@ -153,10 +169,10 @@ export default function SigninClient() {
 
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={loading}
                   className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.75 font-medium text-white shadow-md transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-80"
                 >
-                  {submitting ? (
+                  {loading ? (
                     <>
                       <Spinner />
                       Signing in…
@@ -173,7 +189,12 @@ export default function SigninClient() {
               </form>
             </div>
 
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mt-4 rounded-xl border border-emerald-100 bg-white/90 p-4 text-sm text-gray-700 shadow-sm">
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="mt-4 rounded-xl border border-emerald-100 bg-white/90 p-4 text-sm text-gray-700 shadow-sm"
+            >
               “Best lead quality we’ve had in ages. Landed two projects in the first week.”
               <span className="ml-2 font-medium text-gray-900">— Kent Renovations</span>
             </motion.div>
