@@ -192,3 +192,4 @@ html,body{overflow-x:hidden}
 @media (prefers-reduced-motion: reduce) {
   .animate-\[sweep_7s_ease-in-out_infinite\] { animation: none !important; }
 }
+@import "./(styles)/hero-effect.css";

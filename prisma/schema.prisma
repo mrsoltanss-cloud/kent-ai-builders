@@ -1,20 +1,18 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
+// prisma/schema.prisma
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-//
-// Enums
-//
-enum LeadStatus {
-  NEW
-  PENDING
-  QUOTED
-  CLOSED
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ----- Enums -----
+enum Role {
+  CUSTOMER
+  BUILDER
+  ADMIN
 }
 
 enum Urgency {
@@ -23,146 +21,69 @@ enum Urgency {
   URGENT
 }
 
-enum UserRole {
-  BUILDER
-  CUSTOMER
-  ADMIN
+enum LeadStatus {
+  PENDING
+  CONTACTED
+  QUOTED
+  WON
+  LOST
+  CLOSED
 }
 
-enum ProfileStatus {
+enum BuilderStatus {
   DRAFT
-  APPROVED
+  PENDING_REVIEW
+  ACTIVE
+  REJECTED
 }
 
-//
-// Core Models (existing + indexes)
-//
+enum VerificationType {
+  INSURANCE
+  ID
+  CERT
+}
+
+enum VerificationStatus {
+  UPLOADED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+// ----- Models -----
 model User {
-  id            String          @id @default(cuid())
-  name          String?
-  email         String?         @unique
-  image         String?
-  role          UserRole        @default(BUILDER)
-  leads         Lead[]
-  profile       BuilderProfile?
-  createdAt     DateTime        @default(now())
-  PortfolioItem PortfolioItem[]
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  image        String?
+  passwordHash String?
+  role         Role     @default(CUSTOMER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  leads        Lead[]   @relation("UserLeads")
+
+  // Optional public slug for builder pages
+  builderSlug  String?  @unique
+  builder      BuilderProfile?
 }
 
 model Lead {
-  id          String     @id @default(cuid())
-  service     String
-  scope       String?
-  rooms       Int?
-  sqm         Int?
-  urgency     Urgency
-  budget      String?
-  timeline    String?
-  contact     String
-  aiQuote     Json?
-  status      LeadStatus @default(PENDING)
-  userId      String?
-  user        User?      @relation(fields: [userId], references: [id])
-  attachments Json?
-  createdAt   DateTime   @default(now())
-
-  @@index([status])
-  @@index([createdAt])
+  id        String     @id @default(cuid())
+  userId    String?
+  user      User?      @relation("UserLeads", fields: [userId], references: [id])
+  service   String
+  details   String?
+  postcode  String?
+  urgency   Urgency?
+  priceMin  Int?
+  priceMax  Int?
+  status    LeadStatus @default(PENDING)
+  /// Public-facing reference like BK-1240-0863 (unique, uppercase).
+  reference String?    @unique
+  createdAt DateTime   @default(now())
 }
-
-model Job {
-  id             String    @id @default(uuid())
-  title          String
-  summary        String?
-  priceMin       Int?
-  priceMax       Int?
-  tier           String?
-  status         String?
-  views          Int?      @default(0)
-  allocCap       Int?      @default(3)
-  contactUnlocks Int?      @default(0)
-  aiSeeded       Boolean?  @default(false)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  visibleUntil   DateTime?
-
-  @@index([visibleUntil])
-  @@index([createdAt])
-}
-
-//
-// New: Builder Profile (powers onboarding + public page)
-//
-model BuilderProfile {
-  id     String @id @default(cuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id])
-
-  // Brand & Identity
-  company         String
-  phone           String
-  yearsExperience Int?
-  logoUrl         String?
-  bio             String? // 160–240 chars suggested
-  slug            String  @unique
-
-  // Services & Coverage
-  tradeTypes   String[] // e.g., ["General Builder","Tiling"]
-  services     String[] // Detailed service list
-  minJobValue  Int? // in GBP
-  maxJobValue  Int? // in GBP
-  availability String? // "Immediate" | "2–4 weeks" | etc.
-  postcodeBase String
-  radiusKm     Int? // 5–50
-  areas        String[] // e.g., ["Canterbury","Maidstone"]
-
-  // Portfolio & Trust
-  portfolio      Json? // [{title, category, budgetBand, photos[], beforeAfterPairs[], description}]
-  certifications String[] // e.g., ["NICEIC","Gas Safe"]
-  hasInsurance   Boolean  @default(false)
-  insuranceCover String? // e.g., "£1m", "£5m"
-
-  // Notifications & Preferences
-  notifications Json? // { email: bool, whatsapp: bool, quietHours: {start,end} }
-
-  // Lifecycle
-  profileStatus ProfileStatus @default(DRAFT)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-
-  @@index([profileStatus])
-  @@index([postcodeBase])
-}
-
-// ===== Portfolio v0 =====
-model PortfolioItem {
-  id          String           @id @default(cuid())
-  userId      String
-  user        User             @relation(fields: [userId], references: [id])
-  title       String
-  description String?
-  coverUrl    String?
-  position    Int              @default(0)
-  images      PortfolioImage[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-
-  @@index([userId, position])
-}
-
-model PortfolioImage {
-  id        String        @id @default(cuid())
-  itemId    String
-  item      PortfolioItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  url       String
-  caption   String?
-  position  Int           @default(0)
-  createdAt DateTime      @default(now())
-
-  @@index([itemId, position])
-}
-
-enum BuilderStatus { DRAFT PENDING_REVIEW ACTIVE REJECTED }
 
 model BuilderProfile {
   id           String        @id @default(cuid())
@@ -177,10 +98,10 @@ model BuilderProfile {
   radiusMiles  Int?
   lat          Float?
   lng          Float?
-  completeness Int            @default(0)
-  status       BuilderStatus  @default(DRAFT)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  completeness Int           @default(0)
+  status       BuilderStatus @default(DRAFT)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   portfolio    PortfolioItem[]
   documents    VerificationDocument[]
@@ -193,12 +114,9 @@ model PortfolioItem {
   imageUrl   String
   caption    String?
   order      Int       @default(0)
-  visibility String    @default("PRIVATE") // PRIVATE | PUBLIC
+  visibility String    @default("PRIVATE")
   createdAt  DateTime  @default(now())
 }
-
-enum VerificationType { INSURANCE ID CERT }
-enum VerificationStatus { UPLOADED UNDER_REVIEW APPROVED REJECTED }
 
 model VerificationDocument {
   id         String             @id @default(cuid())

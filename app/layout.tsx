@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import GlobalFocusHomeowners from "@/components/ui/GlobalFocusHomeowners";
 import Providers from "./providers";
 import "./globals.css";
 import { Toaster } from 'sonner'
@@ -13,7 +14,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en-GB" suppressHydrationWarning>
       <body className="min-h-[100dvh] bg-white" suppressHydrationWarning suppressHydrationWarning>
         <Providers>{children}</Providers>
-      </body>
+        <GlobalFocusHomeowners />
+</body>
     </html>
   );
 }

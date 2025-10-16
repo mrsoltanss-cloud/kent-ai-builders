@@ -1,0 +1,15 @@
+.hero-effect { position: relative; isolation: isolate; overflow: hidden; }
+.hero-effect::before, .hero-effect::after{
+  content:""; position:absolute; filter: blur(80px); opacity:.35; pointer-events:none; transform: translateZ(0);
+}
+.hero-effect::before{ width:65vmin; height:65vmin; left:-10vmin; top:-10vmin;
+  background: radial-gradient(closest-side, rgba(16,185,129,.6), transparent 70%);
+  animation: heroFloat1 18s linear infinite;
+}
+.hero-effect::after{ width:70vmin; height:70vmin; right:-15vmin; bottom:-15vmin;
+  background: radial-gradient(closest-side, rgba(45,212,191,.45), transparent 70%);
+  animation: heroFloat2 22s linear infinite;
+}
+@keyframes heroFloat1{ 0%{transform:translate3d(0,0,0)} 50%{transform:translate3d(3vmin,-2vmin,0)} 100%{transform:translate3d(0,0,0)}}
+@keyframes heroFloat2{ 0%{transform:translate3d(0,0,0)} 50%{transform:translate3d(-3vmin,2vmin,0)} 100%{transform:translate3d(0,0,0)}}
+@media (max-width:640px){ .hero-effect::before,.hero-effect::after{ filter:blur(60px) } }

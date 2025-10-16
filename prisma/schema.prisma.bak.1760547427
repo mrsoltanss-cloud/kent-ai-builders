@@ -1,0 +1,123 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  CUSTOMER
+  BUILDER
+  ADMIN
+}
+
+enum Urgency {
+  FLEXIBLE
+  SOON
+  URGENT
+}
+
+enum LeadStatus {
+  PENDING
+  CONTACTED
+  QUOTED
+  WON
+  LOST
+  CLOSED
+}
+
+enum BuilderStatus {
+  DRAFT
+  PENDING_REVIEW
+  ACTIVE
+  REJECTED
+}
+
+enum VerificationType {
+  INSURANCE
+  ID
+  CERT
+}
+
+enum VerificationStatus {
+  UPLOADED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  name           String?
+  passwordHash   String?
+  role           Role            @default(CUSTOMER)
+  createdAt      DateTime        @default(now())
+  leads          Lead[]          @relation("UserLeads")
+  builderSlug    String?         @unique
+  BuilderProfile BuilderProfile?
+}
+
+model Lead {
+  id        String     @id @default(cuid())
+  userId    String?
+  user      User?      @relation("UserLeads", fields: [userId], references: [id])
+  service   String
+  details   String?
+  postcode  String?
+  urgency   Urgency?
+  priceMin  Int?
+  priceMax  Int?
+  status    LeadStatus @default(PENDING)
+  createdAt DateTime   @default(now())
+}
+
+model BuilderProfile {
+  id           String                 @id @default(cuid())
+  userId       String                 @unique
+  user         User                   @relation(fields: [userId], references: [id])
+  companyName  String?
+  phone        String?
+  website      String?
+  bio          String?
+  trades       String[]               @default([])
+  postcode     String?
+  radiusMiles  Int?
+  lat          Float?
+  lng          Float?
+  completeness Int                    @default(0)
+  status       BuilderStatus          @default(DRAFT)
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  portfolio    PortfolioItem[]
+  documents    VerificationDocument[]
+}
+
+model PortfolioItem {
+  id         String         @id @default(cuid())
+  builderId  String
+  builder    BuilderProfile @relation(fields: [builderId], references: [id])
+  imageUrl   String
+  caption    String?
+  order      Int            @default(0)
+  visibility String         @default("PRIVATE")
+  createdAt  DateTime       @default(now())
+}
+
+model VerificationDocument {
+  id         String             @id @default(cuid())
+  builderId  String
+  builder    BuilderProfile     @relation(fields: [builderId], references: [id])
+  type       VerificationType
+  fileUrl    String
+  filename   String?
+  mimeType   String?
+  size       Int?
+  status     VerificationStatus @default(UPLOADED)
+  reviewedBy String?
+  reviewedAt DateTime?
+  reason     String?
+  createdAt  DateTime           @default(now())
+}
