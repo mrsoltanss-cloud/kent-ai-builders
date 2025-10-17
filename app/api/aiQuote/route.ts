@@ -1,34 +1,18 @@
 import { NextResponse } from "next/server";
 
-export async function POST(req: Request) {
-  try {
-    const body = await req.json();
-    const { service, postcode, urgency, details } = body || {};
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const q = (searchParams.get("q") || "home improvement in Kent").trim();
 
-    // Compose a richer prompt (your OpenAI client/config can live elsewhere)
-    const prompt = `
-You are an estimator for UK domestic building works. Provide a realistic price range in GBP for:
-Service: ${service}
-Postcode: ${postcode}
-Timing: ${urgency}
-Details: ${JSON.stringify(details || {}, null, 2)}
-Guidelines: include labour, materials, VAT typical; note assumptions and exclusions in a short bullet list. Keep it concise.`;
+  // deterministic demo calc
+  const baseSeed = [...q.toLowerCase()].reduce((a, c) => a + c.charCodeAt(0), 0) % 97;
+  const base = 6500 + baseSeed * 37;
+  const low = Math.round(base * 0.92);
+  const mid = Math.round(base * 1.05);
+  const high = Math.round(base * 1.26);
 
-    // Stub response to keep server running without external calls.
-    // Replace with your OpenAI call if already implemented elsewhere.
-    const estimate = {
-      low: 5000,
-      high: 12000,
-      notes: [
-        "Range varies by spec, access, and finishes.",
-        "Final quote subject to site survey."
-      ],
-      promptUsed: prompt.trim()
-    };
-
-    return NextResponse.json(estimate, { status: 200 });
-  } catch (e: any) {
-    console.error(e);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
-  }
+  return NextResponse.json(
+    { low, mid, high, confidence: "medium", timelineWeeks: [2, 5] },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }

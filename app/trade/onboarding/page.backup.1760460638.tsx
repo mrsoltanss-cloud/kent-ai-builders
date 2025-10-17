@@ -29,7 +29,7 @@ export default function TradeOnboardingIndex() {
 
         <div className="mb-6">
           <div className="flex items-center justify-between text-sm mb-2">
-            <span className="text-slate-300/80">Progress</span>
+            <span className="text-white">Progress</span>
             <span className="text-slate-200 font-medium">{pct}% complete</span>
           </div>
           <div className="h-2 rounded-full bg-slate-700/50 overflow-hidden">

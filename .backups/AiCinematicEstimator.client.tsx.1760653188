@@ -1,0 +1,181 @@
+"use client";
+
+import React, { useEffect, useMemo, useRef, useState } from "react";
+
+type Estimate = { low: number; high: number; rationale?: string };
+type ApiResp = { estimate?: Estimate };
+
+/** Lightweight number tween (no deps) */
+function useTween(value: number, duration = 350) {
+  const [v, setV] = useState(value);
+  const fromRef = useRef(value);
+  const startRef = useRef<number | null>(null);
+  const toRef = useRef(value);
+
+  useEffect(() => {
+    fromRef.current = v;
+    toRef.current = value;
+    startRef.current = null;
+
+    let raf = 0;
+    const step = (t: number) => {
+      if (startRef.current == null) startRef.current = t;
+      const p = Math.min(1, (t - startRef.current) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setV(Math.round(fromRef.current + (toRef.current - fromRef.current) * eased));
+      if (p < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [value, duration]);
+
+  return v;
+}
+
+const money = (n: number) => "£" + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+const PHRASES = [
+  "Bathroom refit in Tunbridge Wells",
+  "New driveway in Sevenoaks",
+  "Loft conversion in Maidstone",
+  "Roof repair in Ashford",
+  "Kitchen renovation in Canterbury",
+];
+
+export default function AiCinematicEstimator() {
+  const [idx, setIdx] = useState(0);
+  const [typed, setTyped] = useState("");
+  const [running, setRunning] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const [low, setLow] = useState(12000);
+  const [mid, setMid] = useState(15000);
+  const [high, setHigh] = useState(18000);
+
+  const tlow = useTween(low);
+  const tmid = useTween(mid);
+  const thigh = useTween(high);
+
+  const phrase = useMemo(() => PHRASES[idx % PHRASES.length], [idx]);
+
+  /** Typewriter (internal demo when user hasn't interacted) */
+  useEffect(() => {
+    if (!running) return;
+    setTyped(""); setErr(null);
+    let i = 0;
+    const letters = phrase.split("");
+    let timer: any = setTimeout(function tick() {
+      setTyped(letters.slice(0, i + 1).join(""));
+      i++;
+      if (i < letters.length) {
+        timer = setTimeout(tick, 30);
+      } else {
+        preview(phrase);
+        timer = setTimeout(() => setIdx((p) => p + 1), 3500);
+      }
+      return () => clearTimeout(timer);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [phrase, running]);
+
+  // Listen for external prompts from TypewriterPromptRotator
+  useEffect(() => {
+    const onPrompt = (e: Event) => {
+      try {
+        const detail = (e as CustomEvent).detail || {};
+        const p = (detail.prompt || "").toString();
+        if (!p) return;
+        setRunning(false);      // stop internal cycling
+        setTyped(p);            // show the incoming phrase
+        preview(p);             // trigger a preview immediately
+      } catch {}
+    };
+    window.addEventListener("brixel:ai/prompt", onPrompt as any);
+    return () => window.removeEventListener("brixel:ai/prompt", onPrompt as any);
+  }, []);
+
+  async function preview(q: string) {
+    try {
+      setLoading(true); setErr(null);
+      const body = { service: q, details: q };
+      const r = await fetch("/api/aiQuote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const j: ApiResp = await r.json();
+      if (!j?.estimate) throw new Error("No estimate");
+      const { low, high } = j.estimate;
+      const mid = Math.round((low + high) / 2);
+      setLow(low);
+      setMid(mid);
+      setHigh(high);
+    } catch (e: any) {
+      setErr(e?.message || "Failed to fetch");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white/80 backdrop-blur-sm p-4 sm:p-5 shadow-sm relative overflow-hidden">
+      {/* subtle AI pulse overlay */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className={`ai-pulse ${loading ? "opacity-70" : "opacity-0"} transition-opacity`} />
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-sm font-medium text-emerald-700 flex items-center gap-2">
+          <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+          See how powerful our AI really is
+        </div>
+        <button
+          onClick={() => { setRunning(false); location.href = "/quote/conversational"; }}
+          className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs sm:text-sm hover:bg-emerald-700 transition"
+        >
+          Try our AI now ➜
+        </button>
+      </div>
+
+      <div className="mt-3 flex items-center gap-2">
+        <div className="relative grow">
+          <input
+            readOnly
+            value={typed}
+            className="w-full rounded-lg border border-gray-300 bg-white pl-3 pr-28 py-2 text-sm"
+          />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">
+            <span className="ai-caret">|</span>
+          </span>
+        </div>
+        <button
+          onClick={() => preview(typed || phrase)}
+          className="px-3 py-2 rounded-lg border text-sm hover:bg-gray-50"
+        >
+          Preview
+        </button>
+      </div>
+
+      <div className="mt-3 grid grid-cols-3 gap-2 sm:gap-3">
+        <Card label="Low" value={tlow} highlight={loading} />
+        <Card label="Estimate" value={tmid} highlight={loading} />
+        <Card label="High" value={thigh} highlight={loading} />
+      </div>
+
+      <div className="mt-2 text-[11px] sm:text-xs text-gray-500">
+        Estimated timeline: <b>2–5 weeks</b> · Data from 2,300+ real Kent projects.
+        {err ? <span className="text-rose-600 ml-2">(Preview failed — heuristic shown)</span> : null}
+      </div>
+    </div>
+  );
+}
+
+function Card({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
+  return (
+    <div className={`rounded-xl border p-3 text-center relative overflow-hidden ${highlight ? "ai-sheen" : ""}`}>
+      <div className="text-emerald-700 font-extrabold text-xl sm:text-2xl">{money(value)}</div>
+      <div className="text-[11px] sm:text-xs text-gray-500">{label}</div>
+    </div>
+  );
+}

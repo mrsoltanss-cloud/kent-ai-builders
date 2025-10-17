@@ -1,0 +1,42 @@
+"use client";
+
+import React from "react";
+import LiveCounter from "@/components/LiveCounter";
+import SocialProofTicker from "./SocialProofTicker";
+import AiShowcase from "./AiShowcase";
+
+import AiQuotePreview from "@/components/home/AiQuotePreview";
+import dynamic from "next/dynamic";
+import TypewriterPromptRotator from "@/components/home/TypewriterPromptRotator.client";
+
+// Load the cinematic estimator only on the client
+const AiCinematicEstimator = dynamic(
+  () => import("./AiCinematicEstimator.client"),
+  { ssr: false }
+);
+
+export default function HomeAiShowcase() {
+  return (
+    <section aria-labelledby="ai-estimates-title" className="mx-auto max-w-6xl px-4 sm:px-6">
+      <div className="flex items-center justify-between">
+        <h2 id="ai-estimates-title" className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+          AI-powered estimates, trusted local pros.
+        </h2>
+        <LiveCounter />
+      </div>
+
+      <p className="mt-1 text-slate-600">
+        Instant, fair pricing matched to verified builders — no pushy sales calls, ever.
+      </p>
+
+      <div className="mt-4">
+        <AiCinematicEstimator />
+      </div>
+
+      {/* Optional social proof scroller under the card */}
+      <div className="mt-6">
+        <SocialProofTicker />
+      </div>
+    </section>
+  );
+}

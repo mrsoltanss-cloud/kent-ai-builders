@@ -1,0 +1,74 @@
+"use client";
+import React, { useEffect, useRef, useState } from "react";
+
+type Props = {
+  prompts?: string[];
+  speedMs?: number;        // typing speed (per char)
+  holdMs?: number;         // pause after completing a prompt
+  className?: string;
+};
+
+const DEFAULTS = [
+  "Roof repair in Ashford",
+  "Kitchen refit in Maidstone",
+  "Bathroom tiling in Tunbridge Wells",
+  "Driveway in Sevenoaks",
+  "Loft dormer in Bromley",
+];
+
+export default function TypewriterPromptRotator({
+  prompts = DEFAULTS,
+  speedMs = 28,
+  holdMs = 1200,
+  className = "",
+}: Props) {
+  const [index, setIndex] = useState(0);
+  const [typed, setTyped] = useState("");
+  const [phase, setPhase] = useState<"typing" | "holding" | "deleting">("typing");
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // typewriter loop
+  useEffect(() => {
+    const current = prompts[index % prompts.length] || "";
+    if (phase === "typing") {
+      if (typed.length < current.length) {
+        const t = setTimeout(() => setTyped(current.slice(0, typed.length + 1)), speedMs);
+        return () => clearTimeout(t);
+      } else {
+        setPhase("holding");
+        holdTimer.current = setTimeout(() => setPhase("deleting"), holdMs);
+      }
+    }
+    if (phase === "deleting") {
+      if (typed.length > 0) {
+        const t = setTimeout(() => setTyped(current.slice(0, typed.length - 1)), Math.max(12, speedMs * 0.6));
+        return () => clearTimeout(t);
+      } else {
+        setPhase("typing");
+        setIndex((i) => (i + 1) % prompts.length);
+      }
+    }
+    return () => { if (holdTimer.current) clearTimeout(holdTimer.current); };
+  }, [typed, phase, index, prompts, speedMs, holdMs]);
+
+  // pause on hover/focus (nice UX)
+  const pause = () => { if (holdTimer.current) clearTimeout(holdTimer.current); setPhase("holding"); };
+  const resume = () => { if (phase === "holding") setPhase("typing"); };
+
+  return (
+    <div
+      className={`inline-flex items-center text-sm sm:text-base text-slate-500 ${className}`}
+      onMouseEnter={pause}
+      onMouseLeave={resume}
+      onFocus={pause}
+      onBlur={resume}
+      aria-live="polite"
+    >
+      <span className="mr-2 hidden sm:inline">Try:</span>
+      <span className="font-medium text-emerald-700/90">
+        {typed}
+        <span className="ml-0.5 inline-block h-5 w-[2px] align-middle bg-emerald-600 animate-pulse" />
+      </span>
+    </div>
+  );
+}
